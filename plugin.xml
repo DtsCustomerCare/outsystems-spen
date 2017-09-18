@@ -30,7 +30,7 @@ xmlns:android="http://schemas.android.com/apk/res/android"
         </config-file>
 
         <lib-file src="src/android/libs/spen-src.jar" target-dir="libs" arch="device" />  
-        <source-file src="src/android/libs/pen-v4.0.7.jar" target-dir="libs"/>
+        <source-file src="src/android/libs/pen-v4.1.2_light.aar" target-dir="libs"/>
         <lib-file src="src/android/libs/sdk-v1.0.0.jar" target-dir="libs" arch="device" />
 
         <resource-file src="src/android/res/drawable/" target="res/drawable/" />
