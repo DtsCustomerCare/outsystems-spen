@@ -1,0 +1,11 @@
+repositories{
+    mavenCentral()
+    jcenter()
+    flatDir{
+        dirs 'libs'
+    }
+}
+
+dependencies {
+    compile(name: 'pen-v4.1.2_light', ext: 'aar')
+}

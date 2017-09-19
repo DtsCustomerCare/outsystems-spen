@@ -1,0 +1,31 @@
+{
+  "name": "SPen",
+  "version": "2.0.0",
+  "description": "Samsung Spen Plugin",
+  "cordova": {
+    "id": "com.samsung.spen",
+    "platforms": [
+      "android"
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/joaquimorg/outsystems-spen.git"
+  },
+  "keywords": [
+    "ecosystem:cordova",
+    "cordova-android"
+  ],
+  "engines": [
+    {
+      "name": "cordova",
+      "version": ">=3.5.0"
+    }
+  ],
+  "author": "Joaquim Pereira",
+  "license": "Apache 2.0 License",
+  "bugs": {
+    "url": "https://github.com/joaquimorg/outsystems-spen/issues"
+  },
+  "homepage": "https://github.com/joaquimorg/outsystems-spen#readme"
+}
