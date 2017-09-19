@@ -132,9 +132,9 @@ class SPenSurfaceWithTrayBar {
         if (mSpenTrayBar != null && mSpenTrayBar.mButtonDone != null) {
             mSpenTrayBar.mButtonDone.callOnClick();
         }
-        if (mSpenSurface != null) {
+        /*if (mSpenSurface != null) {
             ((SPenInlineSurface) mSpenSurface).onScroll();
-        }
+        }*/
     }
     /**
      * Set Setting Layout for Popup
@@ -144,8 +144,8 @@ class SPenSurfaceWithTrayBar {
         if (mSurfaceType == Utils.SURFACE_POPUP) {
             mSpenSurface.setSpenSettingPenLayout(mSpenTrayBar
                     .getSpenSettingPenLayout());
-            mSpenSurface.SetSpenSettingSelectionLayout(mSpenTrayBar
-                    .getSpenSelectionSettingLayout());
+            /*mSpenSurface.SetSpenSettingSelectionLayout(mSpenTrayBar
+                    .getSpenSelectionSettingLayout());*/
         }
     }
 }

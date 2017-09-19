@@ -18,14 +18,14 @@ package com.samsung.spen;
 
 import android.graphics.Color;
 
-//import com.samsung.android.sdk.pen.engine.SpenSurfaceView;
+import com.samsung.android.sdk.pen.engine.SpenSimpleSurfaceView;
 /**
  * A utility class used for static final variables. Not for Object creation.
  */
 public class Utils {
 
-    //public static int mToolTypeSpen = SpenSurfaceView.TOOL_SPEN;
-    //public static int mToolTypeFinger = SpenSurfaceView.TOOL_FINGER;
+    public static int mToolTypeSpen = SpenSimpleSurfaceView.TOOL_SPEN;
+    public static int mToolTypeFinger = SpenSimpleSurfaceView.TOOL_FINGER;
     public final static int REQUEST_CODE_SELECT_IMAGE_BACKGROUND = 100;
     public static final int CONTEXT_MENU_DELETE_ID = 10;
     public static final int CONTEXT_MENU_TEXT_ID = 11;
