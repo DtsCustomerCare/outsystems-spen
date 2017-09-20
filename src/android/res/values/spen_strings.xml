@@ -1,14 +1,14 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="toolbar_pencolor_btn">Pen Color</string>
-    <string name="toolbar_eraser_btn">Eraser</string>
+    <string name="toolbar_eraser_btn">Limpar</string>
     <string name="toolbar_undo_btn">Undo</string>
     <string name="toolbar_redo_btn">Redo</string>
     <string name="toolbar_changebg_btn">Change Background</string>
     <string name="toolbar_pen_and_finger_mode">S Pen and Finger mode</string>
     <string name="toolbar_selection_btn">Selection</string>
-    <string name="toolbar_done_btn">Done</string>
-    <string name="toolbar_cancel_btn">Cancel</string>
+    <string name="toolbar_done_btn">Aceitar Assinatura</string>
+    <string name="toolbar_cancel_btn">Cancelar</string>
     <string name="toolbar_edit_btn">Edit</string>
     <string name="string_black">Black</string>
     <string name="string_green">Green</string>

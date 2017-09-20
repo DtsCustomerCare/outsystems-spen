@@ -221,7 +221,7 @@ public class SPenPopupSurface extends SpenSurface {
             mRelativeLayout.addView(spenSurfaceViewContainer, lp);
             int xValue = point.x;
             int yValue = point.y
-                    - (int) (((float) 24) * activity.getResources()
+                    - (int) (((float) 36) * activity.getResources()
                             .getDisplayMetrics().density);
             mSpenNoteDoc = new SpenNoteDoc(activity.getApplicationContext(),
                     xValue, yValue);
@@ -287,7 +287,7 @@ public class SPenPopupSurface extends SpenSurface {
             isSurface = false;
         }
 
-        mOrientationListener = new OrientationEventListener(
+        /*mOrientationListener = new OrientationEventListener(
                 activity.getApplicationContext()) {
             int orntation = Configuration.ORIENTATION_PORTRAIT;
 
@@ -314,7 +314,8 @@ public class SPenPopupSurface extends SpenSurface {
                 Log.d(TAG, "Can detect orientation");
             }
             mOrientationListener.enable();
-        }
+        }*/
+
         return isSurface;
     }
 

@@ -109,7 +109,7 @@ public class SpenTrayBar {
     private SpenPlugin mSpenCustomDrawPlugin;
     private SpenSurface mSpenSurface;
     private SpenSimpleSurfaceView mSpenSurfaceView;
-    //private SpenPageDoc mSpenPageDoc;
+    private SpenPageDoc mSpenPageDoc;
     //private SpenNoteDoc mSpenNoteDoc;
     private SpenSettingPenInfo mPenInfo;
     private SpenTrayBarOptions mOptions;
@@ -163,7 +163,7 @@ public class SpenTrayBar {
         mSpenSurface = spenSurface;
         mSpenSurfaceView = mSpenSurface.getSpenSurfaceView();
         mSpenSurfaceView.setZoomable(false);
-        //mSpenPageDoc = mSpenSurface.getSpenPageDoc();
+        mSpenPageDoc = mSpenSurface.getSpenPageDoc();
         //mSpenNoteDoc = mSpenSurface.getSpenNoteDoc();
         mPenInfo = mSpenSurface.getSpenInfo();
 
@@ -822,10 +822,10 @@ public class SpenTrayBar {
             }*/
 
             if (v == mButtonEraser) {
-                //mSpenPageDoc.removeAllObject();
-                mSpenSurfaceView.setBlankColor(0);
+                mSpenPageDoc.removeAllObject();                  
                 mSpenSurfaceView.update();
                 //mButtonEraser.setVisibility(View.GONE);
+                
             }
             /*if (v == mButtonUndo) {
                 userData = mSpenPageDoc.undo();
@@ -1179,12 +1179,12 @@ public class SpenTrayBar {
         }
 
         private void clearDataAndDismissDialog() {
-            if (mButtonUndo != null) {
+            /*if (mButtonUndo != null) {
                 mButtonUndo.setEnabled(false);
             }
             if (mButtonRedo != null) {
                 mButtonRedo.setEnabled(false);
-            }
+            }*/
             //mSpenPageDoc.clearHistory();
             if (mOptions.getSurfaceType() == Utils.SURFACE_POPUP) {
                 ((SPenPopupSurface) mSpenSurface).dismissDialog();
@@ -1328,6 +1328,11 @@ public class SpenTrayBar {
         if (mButtonCancel != null) {
             mButtonCancel.setVisibility(View.VISIBLE);
         }
+
+        if (mButtonEraser != null) {
+            mButtonEraser.setVisibility(View.VISIBLE);
+        }
+
         /*if (mpenAndFinger != null) {
             mpenAndFinger.setVisibility(View.VISIBLE);
         }
@@ -1385,11 +1390,11 @@ public class SpenTrayBar {
         if (mpenAndFinger != null) {
             mpenAndFinger.setVisibility(View.GONE);
         }
-
+        */
         if (mButtonEraser != null) {
             mButtonEraser.setVisibility(View.GONE);
         }
-
+        /*
         if (mButtonPen != null) {
             mButtonPen.setVisibility(View.GONE);
         }
@@ -1407,7 +1412,7 @@ public class SpenTrayBar {
         }*/
     }
 
-    private final HistoryListener mHistoryListener = new HistoryListener() {
+    /*private final HistoryListener mHistoryListener = new HistoryListener() {
         @Override
         public void onCommit(SpenPageDoc page) {
         }
@@ -1429,7 +1434,7 @@ public class SpenTrayBar {
                 mButtonRedo.setEnabled(redoable);
             }
         }
-    };
+    };*/
 
     /*private SpenColorPickerListener mColorPickerListener = new SpenColorPickerListener() {
         @Override
@@ -1550,10 +1555,9 @@ public class SpenTrayBar {
             mButtonPen.setOnTouchListener(mOnTouchListener);
         }*/
 
-        if (mButtonEraser != null) {
-            mButtonEraser.setOnClickListener(mActionButtonsOnClickListener);
-            mButtonEraser.setOnTouchListener(mOnTouchListener);
-        }
+        mButtonEraser.setOnClickListener(mActionButtonsOnClickListener);
+        mButtonEraser.setOnTouchListener(mOnTouchListener);
+
 
         /*if (mButtonUndo != null) {
             mButtonUndo.setOnClickListener(mActionButtonsOnClickListener);
@@ -1813,6 +1817,9 @@ public class SpenTrayBar {
             }
         }*/
 
+        if (mButtonEraser != null) {
+            mButtonEraser.setVisibility(View.VISIBLE);
+        }
         if (mButtonDone != null) {
             mButtonDone.setVisibility(View.VISIBLE);
         }
