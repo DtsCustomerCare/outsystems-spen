@@ -9,3 +9,11 @@ repositories{
 dependencies {
     compile(name: 'pen-v4.1.2_light', ext: 'aar')
 }
+
+android {
+    defaultConfig  {
+        ndk {
+            abiFilters "armeabi", "armeabi-v7a"
+        }
+    }
+}

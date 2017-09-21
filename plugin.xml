@@ -47,9 +47,7 @@ xmlns:android="http://schemas.android.com/apk/res/android"
         <resource-file src="src/android/res/layout/spentraybar_bottom.xml" target="res/layout/spentraybar_bottom.xml" />
         <resource-file src="src/android/res/layout/spentraybar_top.xml" target="res/layout/spentraybar_top.xml" />
         <resource-file src="src/android/res/values/spen_strings.xml" target="res/values/spen_strings.xml" />
-        <resource-file src="src/android/res/values/colors.xml" target="res/values/colors.xml" />
-       
-        <!--source-file src="lib/android/armeabi-v7a/libandroid_060.so" target-dir="libs/armeabi-v7a"/-->
+        <resource-file src="src/android/res/values/colors.xml" target="res/values/colors.xml" />               
     
     </platform>
 
