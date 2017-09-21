@@ -69,12 +69,12 @@ public class SPenPopupSurface extends SpenSurface {
 
     private static final String TAG = "SPenPopupSurface";
 
-    Handler handler = new Handler() {
+    /*Handler handler = new Handler() {
         public void handleMessage(Message msg) {
             int orientation = msg.getData().getInt("orientation");
-//            handleOrientationChange(orientation);
+            handleOrientationChange(orientation);
         }
-    };
+    };*/
 
     /**
      * Constructor for SPenPopupSurface
@@ -314,8 +314,9 @@ public class SPenPopupSurface extends SpenSurface {
                 Log.d(TAG, "Can detect orientation");
             }
             mOrientationListener.enable();
-        }*/
-
+        }
+        */
+        
         return isSurface;
     }
 
@@ -599,7 +600,7 @@ public class SPenPopupSurface extends SpenSurface {
      * Handle Orientation
      * @params orientation
      */
-    void handleOrientationChange(int orientation) {
+    /*void handleOrientationChange(int orientation) {
         LayoutParams lp = null;
         if (mDialog != null) {
             if (mDialog.isShowing()) {
@@ -623,7 +624,8 @@ public class SPenPopupSurface extends SpenSurface {
                 mADiscardDialog.show();
             }
         }
-    }
+    }*/
+
     /**
      * remove surface and close controls
      *

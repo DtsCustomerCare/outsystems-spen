@@ -141,11 +141,11 @@ class SPenSurfaceWithTrayBar {
      * 
      */
     public void setSettingsLayoutForPopup() {
-        if (mSurfaceType == Utils.SURFACE_POPUP) {
+        /*if (mSurfaceType == Utils.SURFACE_POPUP) {
             mSpenSurface.setSpenSettingPenLayout(mSpenTrayBar
                     .getSpenSettingPenLayout());
-            /*mSpenSurface.SetSpenSettingSelectionLayout(mSpenTrayBar
-                    .getSpenSelectionSettingLayout());*/
-        }
+            mSpenSurface.SetSpenSettingSelectionLayout(mSpenTrayBar
+                    .getSpenSelectionSettingLayout());
+        }*/
     }
 }

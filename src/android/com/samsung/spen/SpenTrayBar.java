@@ -98,7 +98,7 @@ public class SpenTrayBar {
     /*private ImageButton mButtonColor1, mButtonColor2, mButtonColor3,
             mButtonColor4, mButtonColor5, mButtonColor6, mButtonColor7;*/
     //private TextView mCurrentPageNumberTextView;
-    private SpenSettingPenLayout mSpenSettingPenLayout;
+    //private SpenSettingPenLayout mSpenSettingPenLayout;
     //private boolean isSpenAndFinger = false;
     //private ArrayList<SpenObjectBase> mClipboard;
     //private SpenContextMenu mPasteContextMenu;
@@ -179,9 +179,9 @@ public class SpenTrayBar {
             Log.d(TAG, "Inside removeTrayBar");
         }
 
-        if (mSpenSettingPenLayout != null) {
+        /*if (mSpenSettingPenLayout != null) {
             mSpenSettingPenLayout.close();
-        }        
+        } */       
 
         /*if (mSelectionSettingView != null) {
             mSelectionSettingView.close();
@@ -446,7 +446,8 @@ public class SpenTrayBar {
 
         mSelectionSettingView = getSpenSelectionSettingLayout();
         setSpenSelectionSettingLayout();
-    }*/
+    }
+    */
 
 
     /**
@@ -1102,7 +1103,7 @@ public class SpenTrayBar {
                     ByteArrayOutputStream jpeg_data = new ByteArrayOutputStream();
                     try {
                         if (imgBitmap != null
-                                && imgBitmap.compress(CompressFormat.JPEG, 40,
+                                && imgBitmap.compress(CompressFormat.PNG, 100,
                                         jpeg_data)) {
                             byte[] code = jpeg_data.toByteArray();
                             String js_out = Base64.encodeToString(code,
@@ -1185,7 +1186,7 @@ public class SpenTrayBar {
             if (mButtonRedo != null) {
                 mButtonRedo.setEnabled(false);
             }*/
-            //mSpenPageDoc.clearHistory();
+            mSpenPageDoc.clearHistory();
             if (mOptions.getSurfaceType() == Utils.SURFACE_POPUP) {
                 ((SPenPopupSurface) mSpenSurface).dismissDialog();
             }
@@ -1519,9 +1520,9 @@ public class SpenTrayBar {
 
         /*if (mSpenSettingPenLayout != null) {
             mSpenSettingPenLayout.setVisibility(SpenSimpleSurfaceView.GONE);
-        }
+        }*/
 
-        if (mSelectionSettingView != null) {
+        /*if (mSelectionSettingView != null) {
             mSelectionSettingView.setVisibility(SpenSimpleSurfaceView.GONE);
         }*/
 
@@ -1656,6 +1657,7 @@ public class SpenTrayBar {
      * 
      * @params mSpenSettingPenLayout SpenSettingPenLayout
      */
+    /*
     public SpenSettingPenLayout getSpenSettingPenLayout() {
         if (Log.isLoggable(Utils.SPEN, Log.DEBUG)) {
             Log.d(TAG, "Inside getSpenSettingPenLayout");
@@ -1690,11 +1692,13 @@ public class SpenTrayBar {
 
         return mSpenSettingPenLayout;
     }
+    */
 
     /**
      * Set Spen Setting Layout
      */
-    /*private void setSpenSettingPenLayout() {
+    /*
+    private void setSpenSettingPenLayout() {
         if (Log.isLoggable(Utils.SPEN, Log.DEBUG)) {
             Log.d(TAG, "Inside setSpenSettingPenLayout");
         }
@@ -1713,8 +1717,8 @@ public class SpenTrayBar {
         mSpenSettingPenLayout.setCanvasView(mSpenSurfaceView);
         mSpenSettingPenLayout.setVisibility(View.GONE);
         mSpenSettingPenLayout.setInfo(mPenInfo);
-    }*/
-
+    }
+    */
     /**
      * Set Surface Listeners
     */
@@ -1724,11 +1728,11 @@ public class SpenTrayBar {
         }
         // set surface listeners
         //mSpenSurfaceView.setColorPickerListener(mColorPickerListener);
-        mSpenSurfaceView.setOnTouchListener(mSpenSurfaceOnTouchListener);
+        //mSpenSurfaceView.setOnTouchListener(mSpenSurfaceOnTouchListener);
 
         // undo-redo history listener for page doc
         //mSpenPageDoc.setHistoryListener(mHistoryListener);
-        mSpenSurfaceView.setControlListener(mControlListener);
+        //mSpenSurfaceView.setControlListener(mControlListener);
         /*mSpenSurfaceView.setPageEffectListener(new SpenPageEffectListener() {
 
             @Override
