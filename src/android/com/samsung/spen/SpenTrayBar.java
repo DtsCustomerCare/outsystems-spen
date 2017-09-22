@@ -273,7 +273,7 @@ public class SpenTrayBar {
 
         mButtonDone = (ImageButton) getView("saveBtn", "id", View.VISIBLE);
         mButtonCancel = (ImageButton) getView("cancelBtn", "id", View.VISIBLE);
-        if (mOptions.getIsFeatureEnabled()) {
+        /*if (mOptions.getIsFeatureEnabled()) {
 
             mpenAndFinger = (ImageButton) getView("penAndFingerMode", "id",
                     View.VISIBLE);
@@ -286,7 +286,7 @@ public class SpenTrayBar {
         } else {
             mSpenSurfaceView.setToolTypeAction(Utils.mToolTypeFinger,
                     SpenSurfaceView.ACTION_STROKE);
-        }
+        }*/
 
         if (((mOptions.getsPenFlags() & Utils.FLAG_PEN) == Utils.FLAG_PEN)
                 || mOptions.getSurfaceType() == Utils.SURFACE_POPUP) {
@@ -1640,7 +1640,7 @@ public class SpenTrayBar {
 
         @Override
         public boolean onTouch(View arg0, MotionEvent event) {
-            if (mSpenSettingPenLayout.isShown()) {
+            /*if (mSpenSettingPenLayout.isShown()) {
                 mSpenSettingPenLayout.setVisibility(View.GONE);
             }
             if (mSelectionSettingView.isShown()) {
@@ -1656,7 +1656,7 @@ public class SpenTrayBar {
                     && mPasteContextMenu != null
                     && mPasteContextMenu.isShowing()) {
                 mPasteContextMenu.hide();
-            }
+            }*/
 
             return false;
         }

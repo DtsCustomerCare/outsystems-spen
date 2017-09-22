@@ -163,7 +163,7 @@ public class SPenPopupSurface extends SpenSurface {
                 RelativeLayout.LayoutParams.MATCH_PARENT,
                 RelativeLayout.LayoutParams.WRAP_CONTENT);
 
-        int resId = activity.getResources().getIdentifier("spentraybar_top_simple", 
+        int resId = activity.getResources().getIdentifier("spentraybar_top", 
                 "layout", activity.getPackageName());
         RelativeLayout traybar_top = (RelativeLayout) View.inflate(activity,
                 resId, null);
@@ -221,7 +221,7 @@ public class SPenPopupSurface extends SpenSurface {
             mRelativeLayout.addView(spenSurfaceViewContainer, lp);
             int xValue = point.x;
             int yValue = point.y
-                    - (int) (((float) 24) * activity.getResources()
+                    - (int) (((float) 48) * activity.getResources()
                             .getDisplayMetrics().density);
             mSpenNoteDoc = new SpenNoteDoc(activity.getApplicationContext(),
                     xValue, yValue);
@@ -362,7 +362,7 @@ public class SPenPopupSurface extends SpenSurface {
         }
         size = findWidthAndHeightForPageDoc(size);
         size.y = size.y
-                + (int) (((float) 24) * activity.getResources()
+                + (int) (((float) 48) * activity.getResources()
                         .getDisplayMetrics().density);
         return size;
     }
