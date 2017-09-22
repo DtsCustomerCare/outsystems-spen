@@ -61,10 +61,9 @@ class SPenSurfaceWithTrayBar {
             Log.d(TAG, "Inside createSPenSurfaceWithTrayBar");
         }
 
-        /*if (mSurfaceType == Utils.SURFACE_INLINE) {
+        if (mSurfaceType == Utils.SURFACE_INLINE) {
             mSpenSurface = new SPenInlineSurface(mContextParams, mOptions);
-        } else */
-        if (mSurfaceType == Utils.SURFACE_POPUP) {
+        } else if (mSurfaceType == Utils.SURFACE_POPUP) {
             mSpenSurface = new SPenPopupSurface(mContextParams, mOptions);
         }
 
@@ -97,6 +96,11 @@ class SPenSurfaceWithTrayBar {
     void openSPenSurfaceWithTrayBar() {
         if (Log.isLoggable(Utils.SPEN, Log.DEBUG)) {
             Log.d(TAG, "Inside openSPenSurfaceWithTrayBar");
+        }
+        if (mSpenTrayBar != null) {
+            mSpenTrayBar.changeContextParams(mContextParams);
+            mSpenTrayBar.changeButtonsOnSurfaceView(mOptions);
+            mSpenTrayBar.changeSurfaceColor(mOptions);
         }
         if (mSpenSurface != null) {
             mSpenSurface.openSpenSurface(mOptions, mContextParams);
@@ -132,20 +136,20 @@ class SPenSurfaceWithTrayBar {
         if (mSpenTrayBar != null && mSpenTrayBar.mButtonDone != null) {
             mSpenTrayBar.mButtonDone.callOnClick();
         }
-        /*if (mSpenSurface != null) {
+        if (mSpenSurface != null) {
             ((SPenInlineSurface) mSpenSurface).onScroll();
-        }*/
+        }
     }
     /**
      * Set Setting Layout for Popup
      * 
      */
     public void setSettingsLayoutForPopup() {
-        /*if (mSurfaceType == Utils.SURFACE_POPUP) {
+        if (mSurfaceType == Utils.SURFACE_POPUP) {
             mSpenSurface.setSpenSettingPenLayout(mSpenTrayBar
                     .getSpenSettingPenLayout());
             mSpenSurface.SetSpenSettingSelectionLayout(mSpenTrayBar
                     .getSpenSelectionSettingLayout());
-        }*/
+        }
     }
 }

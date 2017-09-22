@@ -31,7 +31,10 @@ import com.samsung.android.sdk.pen.SpenSettingPenInfo;
 import com.samsung.android.sdk.pen.SpenSettingSelectionInfo;
 import com.samsung.android.sdk.pen.document.SpenNoteDoc;
 import com.samsung.android.sdk.pen.document.SpenObjectBase;
+import com.samsung.android.sdk.pen.document.SpenObjectContainer;
+import com.samsung.android.sdk.pen.document.SpenObjectImage;
 import com.samsung.android.sdk.pen.document.SpenObjectStroke;
+import com.samsung.android.sdk.pen.document.SpenObjectTextBox;
 import com.samsung.android.sdk.pen.document.SpenPageDoc;
 import com.samsung.android.sdk.pen.document.SpenPageDoc.HistoryListener;
 import com.samsung.android.sdk.pen.document.SpenPageDoc.HistoryUpdateInfo;
@@ -40,9 +43,17 @@ import com.samsung.android.sdk.pen.engine.SpenContextMenu;
 import com.samsung.android.sdk.pen.engine.SpenContextMenuItemInfo;
 import com.samsung.android.sdk.pen.engine.SpenControlListener;
 import com.samsung.android.sdk.pen.engine.SpenLongPressListener;
+import com.samsung.android.sdk.pen.engine.SpenPageEffectListener;
 import com.samsung.android.sdk.pen.engine.SpenSelectionChangeListener;
-import com.samsung.android.sdk.pen.engine.SpenSimpleSurfaceView;
-
+import com.samsung.android.sdk.pen.engine.SpenSurfaceView;
+import com.samsung.android.sdk.pen.engine.SpenTextMeasure;
+import com.samsung.android.sdk.pen.recognition.SpenCreationFailureException;
+import com.samsung.android.sdk.pen.recognition.SpenRecognitionBase.ResultListener;
+import com.samsung.android.sdk.pen.recognition.SpenRecognitionInfo;
+import com.samsung.android.sdk.pen.recognition.SpenShapeRecognition;
+import com.samsung.android.sdk.pen.recognition.SpenShapeRecognitionManager;
+import com.samsung.android.sdk.pen.recognition.SpenTextRecognition;
+import com.samsung.android.sdk.pen.recognition.SpenTextRecognitionManager;
 import com.samsung.android.sdk.pen.settingui.SpenSettingPenLayout;
 import com.samsung.android.sdk.pen.settingui.SpenSettingSelectionLayout;
 import com.samsung.spen.SpenException.SpenExceptionType;
@@ -70,7 +81,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.View.OnClickListener;
 import android.view.View.OnTouchListener;
-//import android.view.ViewTreeObserver.OnScrollChangedListener;
+import android.view.ViewTreeObserver.OnScrollChangedListener;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
@@ -91,35 +102,40 @@ public class SpenTrayBar {
             mButtonPageNavigateLeft, mButtonSelect, mpenAndFinger,
             mButtonCancel;
     protected RelativeLayout mRelativeLayout;
-    //private int mOriginalPosition;
+    private int mOriginalPosition;
     protected ImageView mImageView;
     protected SpenContextParams mContextParams;
     protected String id;
-    /*private ImageButton mButtonColor1, mButtonColor2, mButtonColor3,
-            mButtonColor4, mButtonColor5, mButtonColor6, mButtonColor7;*/
-    //private TextView mCurrentPageNumberTextView;
-    //private SpenSettingPenLayout mSpenSettingPenLayout;
-    //private boolean isSpenAndFinger = false;
-    //private ArrayList<SpenObjectBase> mClipboard;
-    //private SpenContextMenu mPasteContextMenu;
+    private ImageButton mButtonColor1, mButtonColor2, mButtonColor3,
+            mButtonColor4, mButtonColor5, mButtonColor6, mButtonColor7;
+    private TextView mCurrentPageNumberTextView;
+    private SpenSettingPenLayout mSpenSettingPenLayout;
+    private SpenTextRecognition mTextRecognition = null;
+    private SpenTextRecognitionManager mSpenTextRecognitionManager = null;
+    private SpenShapeRecognitionManager mSpenShapeRecognitionManager = null;
+    private SpenShapeRecognition mShapeRecognition = null;
+    private boolean mIsProcessingRecognition = false;
+    private boolean isSpenAndFinger = false;
+    private ArrayList<SpenObjectBase> mClipboard;
+    private SpenContextMenu mPasteContextMenu;
     private boolean isDone = false;
-    //private SpenSettingSelectionLayout mSelectionSettingView;
-    //private SpenSettingSelectionInfo mSpenSettingSelectionInfo;
+    private SpenSettingSelectionLayout mSelectionSettingView;
+    private SpenSettingSelectionInfo mSpenSettingSelectionInfo;
     private Resources activityRes;
     private SpenPlugin mSpenCustomDrawPlugin;
     private SpenSurface mSpenSurface;
-    private SpenSimpleSurfaceView mSpenSurfaceView;
+    private SpenSurfaceView mSpenSurfaceView;
     private SpenPageDoc mSpenPageDoc;
-    //private SpenNoteDoc mSpenNoteDoc;
+    private SpenNoteDoc mSpenNoteDoc;
     private SpenSettingPenInfo mPenInfo;
     private SpenTrayBarOptions mOptions;
     private LinearLayout mBasicColorView;
-    //private static ArrayList<SpenObjectBase> mInputList = null;
-    //private static ArrayList<SpenObjectBase> mSelectedList = null;
-    //private int mStrokeTimestamp;
-    //private int mStrokeColor;
-    //private float offsetX, offsetY;
-    //private Button mButtonClearAll;
+    private static ArrayList<SpenObjectBase> mInputList = null;
+    private static ArrayList<SpenObjectBase> mSelectedList = null;
+    private int mStrokeTimestamp;
+    private int mStrokeColor;
+    private float offsetX, offsetY;
+    private Button mButtonClearAll;
 
     
     /**
@@ -162,13 +178,18 @@ public class SpenTrayBar {
         mRelativeLayout = spenSurface.getRelativeLayout();
         mSpenSurface = spenSurface;
         mSpenSurfaceView = mSpenSurface.getSpenSurfaceView();
-        mSpenSurfaceView.setZoomable(false);
         mSpenPageDoc = mSpenSurface.getSpenPageDoc();
-        //mSpenNoteDoc = mSpenSurface.getSpenNoteDoc();
+        mSpenNoteDoc = mSpenSurface.getSpenNoteDoc();
         mPenInfo = mSpenSurface.getSpenInfo();
 
         mOptions = options;
-        
+        if (mOptions.getReturnType() == Utils.RETURN_TYPE_TEXT
+                || (mOptions.getsPenFlags() & Utils.FLAG_TEXT_RECOGNITION) == Utils.FLAG_TEXT_RECOGNITION) {
+            setTextRecognition();
+        }
+        if ((mOptions.getsPenFlags() & Utils.FLAG_SHAPE_RECOGNITION) == Utils.FLAG_SHAPE_RECOGNITION)
+            setShapeRecognition();
+
     }
 
     /**
@@ -179,25 +200,36 @@ public class SpenTrayBar {
             Log.d(TAG, "Inside removeTrayBar");
         }
 
-        /*if (mSpenSettingPenLayout != null) {
+        if (mSpenSettingPenLayout != null) {
             mSpenSettingPenLayout.close();
-        } */       
+        }
 
-        /*if (mSelectionSettingView != null) {
+        if (mSpenTextRecognitionManager != null) {
+			if (mTextRecognition !=null){
+				mSpenTextRecognitionManager.destroyRecognition(mTextRecognition);
+			}
+            mSpenTextRecognitionManager.close();
+            mSpenTextRecognitionManager = null;
+            mTextRecognition = null;
+        }
+        if (mSpenShapeRecognitionManager != null) {
+            mSpenShapeRecognitionManager.close();
+            mSpenShapeRecognitionManager = null;
+            mTextRecognition = null;
+        }
+
+        if (mSelectionSettingView != null) {
             mSelectionSettingView.close();
-        }*/
-
+        }
         if (mSpenSurfaceView != null) {
             mSpenSurfaceView.close();
             mSpenSurfaceView.closeControl();
             mSpenSurfaceView = null;
         }
-        
-        /*if (mPasteContextMenu != null) {
+        if (mPasteContextMenu != null) {
             mPasteContextMenu.close();
-        }*/
-
-        /*if (mSpenNoteDoc != null) {
+        }
+        if (mSpenNoteDoc != null) {
             try {
                 mSpenNoteDoc.close();
             } catch (IOException e) {
@@ -207,7 +239,7 @@ public class SpenTrayBar {
             }
         }
         mSpenNoteDoc = null;
-        onScrollListener = null;*/
+        onScrollListener = null;
     }
 
     /**
@@ -225,13 +257,11 @@ public class SpenTrayBar {
             mButtonPen = (ImageButton) getView("penBtn", "id", View.VISIBLE);
         }*/
 
-        /*if (((mOptions.getsPenFlags() & Utils.FLAG_ERASER) == Utils.FLAG_ERASER)
+        if (((mOptions.getsPenFlags() & Utils.FLAG_ERASER) == Utils.FLAG_ERASER)
                 || mOptions.getSurfaceType() == Utils.SURFACE_POPUP) {
             mButtonEraser = (ImageButton) getView("EraserBtn", "id",
                     View.VISIBLE);
-        }*/
-
-        mButtonEraser = (ImageButton) getView("EraserBtn", "id", View.VISIBLE);
+        }
 
         /*if (((mOptions.getsPenFlags() & Utils.FLAG_UNDO_REDO) == Utils.FLAG_UNDO_REDO)
                 || mOptions.getSurfaceType() == Utils.SURFACE_POPUP) {
@@ -243,7 +273,7 @@ public class SpenTrayBar {
 
         mButtonDone = (ImageButton) getView("saveBtn", "id", View.VISIBLE);
         mButtonCancel = (ImageButton) getView("cancelBtn", "id", View.VISIBLE);
-        /*if (mOptions.getIsFeatureEnabled()) {
+        if (mOptions.getIsFeatureEnabled()) {
 
             mpenAndFinger = (ImageButton) getView("penAndFingerMode", "id",
                     View.VISIBLE);
@@ -252,13 +282,13 @@ public class SpenTrayBar {
             mpenAndFinger.setImageResource(resid);
             isSpenAndFinger = false;
             mSpenSurfaceView.setToolTypeAction(Utils.mToolTypeFinger,
-                    SpenSimpleSurfaceView.ACTION_NONE);
+                    SpenSurfaceView.ACTION_NONE);
         } else {
             mSpenSurfaceView.setToolTypeAction(Utils.mToolTypeFinger,
-                    SpenSimpleSurfaceView.ACTION_STROKE);
-        }*/
+                    SpenSurfaceView.ACTION_STROKE);
+        }
 
-        /*if (((mOptions.getsPenFlags() & Utils.FLAG_PEN) == Utils.FLAG_PEN)
+        if (((mOptions.getsPenFlags() & Utils.FLAG_PEN) == Utils.FLAG_PEN)
                 || mOptions.getSurfaceType() == Utils.SURFACE_POPUP) {
             mBasicColorView = (LinearLayout) getView("color_select_layout",
                     "id", View.GONE);
@@ -276,7 +306,7 @@ public class SpenTrayBar {
                     View.VISIBLE);
             mButtonColor7 = (ImageButton) getView("pen7_btn", "id",
                     View.VISIBLE);
-        }*/
+        }
 
         addOptionalButtonsToSurfaceView();
     }
@@ -289,16 +319,15 @@ public class SpenTrayBar {
         }
         Activity activity = mContextParams.getSpenCustomDrawPlugin().cordova
                 .getActivity();
-
         /*if ((mOptions.getsPenFlags() & Utils.FLAG_PEN) == Utils.FLAG_PEN) {
             mButtonPen = (ImageButton) getView("penBtn", "id", View.VISIBLE);
-        }
+        }*/
 
         if ((mOptions.getsPenFlags() & Utils.FLAG_ERASER) == Utils.FLAG_ERASER) {
             mButtonEraser = (ImageButton) getView("EraserBtn", "id",
                     View.VISIBLE);
         }
-
+        /*
         if ((mOptions.getsPenFlags() & Utils.FLAG_UNDO_REDO) == Utils.FLAG_UNDO_REDO) {
             mButtonUndo = (ImageButton) getView("undoBtn", "id", View.VISIBLE);
             mButtonRedo = (ImageButton) getView("redoBtn", "id", View.VISIBLE);
@@ -329,9 +358,8 @@ public class SpenTrayBar {
             mButtonAddPage = (ImageButton) getView("addPage", "id",
                     View.VISIBLE);
 
-        }*/
-
-       /* mButtonClearAll = new Button(activity);
+        }
+        mButtonClearAll = new Button(activity);
         mButtonClearAll.setBackgroundResource(activityRes.getIdentifier(
                 "quickmemo_bubble", "drawable", activity.getPackageName()));
         mButtonClearAll.setVisibility(View.GONE);
@@ -350,9 +378,8 @@ public class SpenTrayBar {
                 .getDisplayMetrics().density);
         lp.width = (int) (((float) 90) * activity.getResources()
                 .getDisplayMetrics().density);
-
-        mRelativeLayout.addView(mButtonClearAll, lp);*/
-
+        mRelativeLayout.addView(mButtonClearAll, lp);
+        */
         initializeListenersForTrayButtons();
     }
     /**
@@ -387,7 +414,7 @@ public class SpenTrayBar {
             mImageView.setId(View.generateViewId());
         }
 
-        /*if (mButtonEdit == null) {
+        if (mButtonEdit == null) {
             mButtonEdit = new ImageButton(context);
             mButtonEdit.setId(View.generateViewId());
             int backResId = activityRes.getIdentifier("tool_ic_gesture",
@@ -397,7 +424,7 @@ public class SpenTrayBar {
             mButtonEdit.setAdjustViewBounds(true);
             mButtonEdit.setPadding(0, 0, 0, 0);
             mButtonEdit.setImageResource(backResId);
-        }*/
+        }
     }
 
     /**
@@ -406,7 +433,6 @@ public class SpenTrayBar {
      * @params nRequestCode
      *                  int
      */
-     /*
     private void callGalleryForInputImage(int nRequestCode) {
         if (Log.isLoggable(Utils.SPEN, Log.DEBUG)) {
             Log.d(TAG, "Inside callGalleryForInputImage, request code is :"
@@ -432,12 +458,11 @@ public class SpenTrayBar {
                     mContextParams.getCallbackContext());
         }
     }
-    */
 
     /**
      * create Setting Layout
      */
-    /*public void createSettingsLayout() {
+    public void createSettingsLayout() {
         if (Log.isLoggable(Utils.SPEN, Log.DEBUG)) {
             Log.d(TAG, "Creating settings Layouts");
         }
@@ -447,7 +472,6 @@ public class SpenTrayBar {
         mSelectionSettingView = getSpenSelectionSettingLayout();
         setSpenSelectionSettingLayout();
     }
-    */
 
 
     /**
@@ -455,7 +479,7 @@ public class SpenTrayBar {
      * 
      * @params mSelectionSettingView SpenSettingSelectionLayout
      */
-    /*public SpenSettingSelectionLayout getSpenSelectionSettingLayout() {
+    public SpenSettingSelectionLayout getSpenSelectionSettingLayout() {
         if (Log.isLoggable(Utils.SPEN, Log.DEBUG)) {
             Log.d(TAG, "Inside getSpenSelectionSettingLayout");
         }
@@ -467,13 +491,12 @@ public class SpenTrayBar {
             mSelectionSettingView.setInfo(getSpenSettingSelectionInfo());
         }
         return mSelectionSettingView;
-    }*/
-
+    }
     /**
      * Set Spen Setting Selection Layout
      * 
      */
-    /*public void setSpenSelectionSettingLayout() {
+    public void setSpenSelectionSettingLayout() {
         if (Log.isLoggable(Utils.SPEN, Log.DEBUG)) {
             Log.d(TAG, "Inside setSpenSelectionSettingLayout");
         }
@@ -494,14 +517,14 @@ public class SpenTrayBar {
         mSelectionSettingView.setCanvasView(mSpenSurfaceView);
         mSpenSurfaceView.setSelectionChangeListener(mSelectionListener);
         mSpenSurfaceView.setSelectionSettingInfo(getSpenSettingSelectionInfo());
-    }*/
+    }
 
     /**
      * Set Spen Setting Selection Info
      * 
      * @params info SpenSettingSelectionInfo
      */
-    /*public void setSpenSettingSelectionInfo(SpenSettingSelectionInfo info) {
+    public void setSpenSettingSelectionInfo(SpenSettingSelectionInfo info) {
         mSpenSettingSelectionInfo = info;
     }
 
@@ -510,12 +533,12 @@ public class SpenTrayBar {
         @Override
         public void onChanged(SpenSettingSelectionInfo info) {
             setSpenSettingSelectionInfo(info);
-            mSelectionSettingView.setVisibility(SpenSimpleSurfaceView.GONE);
+            mSelectionSettingView.setVisibility(SpenSurfaceView.GONE);
             if (Log.isLoggable(Utils.SPEN, Log.DEBUG)) {
                 Log.d(TAG, "SpenSelectionChangeListener, info:" + info.type);
             }
         }
-    };*/
+    };
 
 
     /**
@@ -524,7 +547,7 @@ public class SpenTrayBar {
      * @return mSpenSettingSelectionInfo SpenSettingSelectionInfo
      */
 
-    /*public SpenSettingSelectionInfo getSpenSettingSelectionInfo() {
+    public SpenSettingSelectionInfo getSpenSettingSelectionInfo() {
         if (Log.isLoggable(Utils.SPEN, Log.DEBUG)) {
             Log.d(TAG, "Inside getSpenSettingSelectionInfo");
         }
@@ -533,7 +556,7 @@ public class SpenTrayBar {
             mSpenSettingSelectionInfo.type = SpenSettingSelectionInfo.TYPE_LASSO;
         }
         return mSpenSettingSelectionInfo;
-    }*/
+    }
 
     private final SpenControlListener mControlListener = new SpenControlListener() {
         @Override
@@ -556,7 +579,7 @@ public class SpenTrayBar {
                         "Inside mControlListener onMenuSelected, itemId is :"
                                 + itemId);
             }
-            /*switch (itemId) {
+            switch (itemId) {
 
                 case Utils.CONTEXT_MENU_DELETE_ID :
                     if (Log.isLoggable(Utils.SPEN, Log.DEBUG)) {
@@ -567,7 +590,27 @@ public class SpenTrayBar {
                     }
                     mSpenSurfaceView.closeControl();
                     mSpenSurfaceView.update();
-                    break;                
+                    break;
+
+                case Utils.CONTEXT_MENU_TEXT_ID :
+                    if (Log.isLoggable(Utils.SPEN, Log.DEBUG)) {
+                        Log.d(TAG, "Item Id is for text recognition");
+                    }
+                    if (selectedList.size() > 0 && !mIsProcessingRecognition) {
+                        boolean result = processTextReconition(selectedList);
+                        return result;
+                    }
+                    break;
+
+                case Utils.CONTEXT_MENU_SHAPE_ID :
+                    if (Log.isLoggable(Utils.SPEN, Log.DEBUG)) {
+                        Log.d(TAG, "item Id is for shape recognition");
+                    }
+                    if (selectedList.size() > 0 && !mIsProcessingRecognition) {
+                        boolean result = processShapeRecognition(selectedList);
+                        return result;
+                    }
+                    break;
 
                 case Utils.CONTEXT_MENU_CUT_ID :
                     if (Log.isLoggable(Utils.SPEN, Log.DEBUG)) {
@@ -654,11 +697,95 @@ public class SpenTrayBar {
 
                 default :
                     break;
-            }*/
+            }
+            return true;
+        }
+        private boolean processShapeRecognition(
+                ArrayList<SpenObjectBase> selectedList) {
+            if (Log.isLoggable(Utils.SPEN, Log.DEBUG)) {
+                Log.d(TAG,
+                        "Inside processShapeRecognition, slected list size is :"
+                                + selectedList.size());
+            }
+            if (selectedList.size() > 0 && !mIsProcessingRecognition) {
+
+                ArrayList<SpenObjectBase> inputList = new ArrayList<SpenObjectBase>();
+                for (int i = 0; i < selectedList.size(); i++) {
+                    if (selectedList.get(i).getType() == SpenObjectBase.TYPE_STROKE) {
+                        inputList.add(selectedList.get(i));
+                    }
+                }
+
+                if (inputList.size() <= 0) {
+                    return false;
+                }
+                mIsProcessingRecognition = true;
+                try {
+                    mShapeRecognition.request(inputList);
+                } catch (IllegalStateException e) {
+                    Log.d(TAG,
+                            "SpenShapeRecognition is not loaded: "
+                                    + e.getMessage());
+                    e.printStackTrace();
+                    SpenException.sendPluginResult(
+                            SpenExceptionType.FAILED_RECOGNIZE_TEXT,
+                            mContextParams.getCallbackContext());
+                    return false;
+                } catch (Exception e) {
+                    Log.d(TAG,
+                            "SpenShapeRecognition is not loaded: "
+                                    + e.getMessage());
+                    e.printStackTrace();
+                    SpenException.sendPluginResult(
+                            SpenExceptionType.FAILED_RECOGNIZE_TEXT,
+                            mContextParams.getCallbackContext());
+                    return false;
+                }
+                return true;
+            }
             return true;
         }
 
-        /*private void parse(List<SpenObjectBase> inputList, SpenObjectBase obj) {
+        private boolean processTextReconition(ArrayList<SpenObjectBase> list) {
+            // List the selected strokes and send the list as a request.
+            mSelectedList = list;
+            mInputList = new ArrayList<SpenObjectBase>();
+            mStrokeTimestamp = -1;
+            for (SpenObjectBase obj : mSelectedList) {
+                if (Log.isLoggable(Utils.SPEN, Log.DEBUG)) {
+                    Log.d(TAG, "run: type = " + obj.getType());
+                }
+                parse(mInputList, obj);
+            }
+
+            if (mInputList.size() <= 0) {
+                return false;
+            }
+            mIsProcessingRecognition = true;
+            try {
+                mTextRecognition.request(mInputList);
+            } catch (IllegalStateException e) {
+                Log.d(TAG,
+                        "SpenTextRecognition is not loaded: " + e.getMessage());
+                e.printStackTrace();
+                SpenException.sendPluginResult(
+                        SpenExceptionType.FAILED_RECOGNIZE_TEXT,
+                        mContextParams.getCallbackContext());
+                return false;
+            } catch (Exception e) {
+                Log.d(TAG,
+                        "SpenTextRecognition engine not loaded: "
+                                + e.getMessage());
+                e.printStackTrace();
+                SpenException.sendPluginResult(
+                        SpenExceptionType.FAILED_RECOGNIZE_TEXT,
+                        mContextParams.getCallbackContext());
+                return false;
+            }
+            return true;
+        }
+
+        private void parse(List<SpenObjectBase> inputList, SpenObjectBase obj) {
             if (obj.getType() == SpenObjectBase.TYPE_STROKE) {
                 SpenObjectStroke stroke = (SpenObjectStroke) obj;
                 int[] timestamp = stroke.getTimeStamps();
@@ -689,7 +816,7 @@ public class SpenTrayBar {
                     }
                 }
             }
-        }*/
+        }
 
         @Override
         public boolean onCreated(ArrayList<SpenObjectBase> objectList,
@@ -700,18 +827,25 @@ public class SpenTrayBar {
                 Log.d(TAG, "Inside mControlListener onCreated, presstype is :"
                         + pressType);
             }
-            /*if (mOptions.getSurfaceType() == Utils.SURFACE_INLINE) {
+            if (mOptions.getSurfaceType() == Utils.SURFACE_INLINE) {
                 startScrollDetection();
-            }*/
-            /*menu.add(new SpenContextMenuItemInfo(Utils.CONTEXT_MENU_DELETE_ID,
+            }
+            menu.add(new SpenContextMenuItemInfo(Utils.CONTEXT_MENU_DELETE_ID,
                     "Delete", true));
-            */
-            /*if ((mOptions.getsPenFlags() & Utils.FLAG_SELECTION) == Utils.FLAG_SELECTION) {
+
+            if ((mOptions.getsPenFlags() & Utils.FLAG_TEXT_RECOGNITION) == Utils.FLAG_TEXT_RECOGNITION)
+                menu.add(new SpenContextMenuItemInfo(
+                        Utils.CONTEXT_MENU_TEXT_ID, "To Text", true));
+
+            if ((mOptions.getsPenFlags() & Utils.FLAG_SHAPE_RECOGNITION) == Utils.FLAG_SHAPE_RECOGNITION)
+                menu.add(new SpenContextMenuItemInfo(
+                        Utils.CONTEXT_MENU_SHAPE_ID, "To Shape", true));
+            if ((mOptions.getsPenFlags() & Utils.FLAG_SELECTION) == Utils.FLAG_SELECTION) {
                 menu.add(new SpenContextMenuItemInfo(Utils.CONTEXT_MENU_CUT_ID,
                         "Cut", true));
                 menu.add(new SpenContextMenuItemInfo(
                         Utils.CONTEXT_MENU_COPY_ID, "Copy", true));
-            }*/
+            }
 
             return true;
         }
@@ -734,14 +868,13 @@ public class SpenTrayBar {
                     .getActivity();
             closeSettings();
             mSpenSurfaceView.closeControl();
-            /*if (mPasteContextMenu != null) {
+            if (mPasteContextMenu != null) {
                 mPasteContextMenu.close();
-            }*/
-
-            /*if (v == mButtonPen) {
+            }
+            if (v == mButtonPen) {
                 boolean isAdvancedPen = (mOptions.getsPenFlags() & Utils.FLAG_PEN_SETTINGS) == Utils.FLAG_PEN_SETTINGS;
                 if (isAdvancedPen) {
-                    if (mSpenSurfaceView.getToolTypeAction(Utils.mToolTypeSpen) == SpenSimpleSurfaceView.ACTION_STROKE) {
+                    if (mSpenSurfaceView.getToolTypeAction(Utils.mToolTypeSpen) == SpenSurfaceView.ACTION_STROKE) {
                         if (mSpenSettingPenLayout.isShown()) {
                             mSpenSettingPenLayout.setVisibility(View.GONE);
                         } else {
@@ -751,15 +884,15 @@ public class SpenTrayBar {
                         }
                     } else {
                         mSpenSurfaceView.setToolTypeAction(Utils.mToolTypeSpen,
-                                SpenSimpleSurfaceView.ACTION_STROKE);
+                                SpenSurfaceView.ACTION_STROKE);
                         if (isSpenAndFinger || !mOptions.getIsFeatureEnabled()) {
                             mSpenSurfaceView.setToolTypeAction(
                                     Utils.mToolTypeFinger,
-                                    SpenSimpleSurfaceView.ACTION_STROKE);
+                                    SpenSurfaceView.ACTION_STROKE);
                         }
                     }
                 } else {
-                    if (mSpenSurfaceView.getToolTypeAction(Utils.mToolTypeSpen) == SpenSimpleSurfaceView.ACTION_STROKE) {
+                    if (mSpenSurfaceView.getToolTypeAction(Utils.mToolTypeSpen) == SpenSurfaceView.ACTION_STROKE) {
                         if (mBasicColorView.isShown()) {
                             mBasicColorView.setVisibility(View.GONE);
                         } else {
@@ -767,11 +900,11 @@ public class SpenTrayBar {
                         }
                     } else {
                         mSpenSurfaceView.setToolTypeAction(Utils.mToolTypeSpen,
-                                SpenSimpleSurfaceView.ACTION_STROKE);
+                                SpenSurfaceView.ACTION_STROKE);
                         if (isSpenAndFinger || !mOptions.getIsFeatureEnabled()) {
                             mSpenSurfaceView.setToolTypeAction(
                                     Utils.mToolTypeFinger,
-                                    SpenSimpleSurfaceView.ACTION_STROKE);
+                                    SpenSurfaceView.ACTION_STROKE);
                         }
                     }
                 }
@@ -796,10 +929,9 @@ public class SpenTrayBar {
             } else if (v == mButtonColor7) {
                 mSpenSurface.setColorInfo(Utils.PEN_COLOR_ORANGE);
                 mBasicColorView.setVisibility(View.GONE);
-            }*/
-            
+            }
             /*if (v == mButtonEraser) {
-                if (mSpenSurfaceView.getToolTypeAction(Utils.mToolTypeSpen) == SpenSimpleSurfaceView.ACTION_STROKE_REMOVER) {
+                if (mSpenSurfaceView.getToolTypeAction(Utils.mToolTypeSpen) == SpenSurfaceView.ACTION_STROKE_REMOVER) {
                     if (mButtonClearAll.isShown()) {
                         mButtonClearAll.setVisibility(View.GONE);
                     } else {
@@ -807,35 +939,34 @@ public class SpenTrayBar {
                     }
                 } else {
                     mSpenSurfaceView.setToolTypeAction(Utils.mToolTypeSpen,
-                            SpenSimpleSurfaceView.ACTION_STROKE_REMOVER);
+                            SpenSurfaceView.ACTION_STROKE_REMOVER);
                     if (isSpenAndFinger || !mOptions.getIsFeatureEnabled()) {
                         mSpenSurfaceView.setToolTypeAction(
                                 Utils.mToolTypeFinger,
-                                SpenSimpleSurfaceView.ACTION_STROKE_REMOVER);
+                                SpenSurfaceView.ACTION_STROKE_REMOVER);
                     }
                 }
             }*/
+            // New Eraser, JP
+            // Clean ALL
+            if (v == mButtonEraser) {
+                mSpenPageDoc.removeAllObject();
+                mSpenSurfaceView.update();                
+            }
 
-            /*if (v == mButtonClearAll) {
-                //mSpenPageDoc.removeAllObject();
+            if (v == mButtonClearAll) {
+                mSpenPageDoc.removeAllObject();
                 mSpenSurfaceView.update();
                 mButtonClearAll.setVisibility(View.GONE);
-            }*/
-
-            if (v == mButtonEraser) {
-                mSpenPageDoc.removeAllObject();                  
-                mSpenSurfaceView.update();
-                //mButtonEraser.setVisibility(View.GONE);
-                
             }
-            /*if (v == mButtonUndo) {
+            if (v == mButtonUndo) {
                 userData = mSpenPageDoc.undo();
                 mSpenSurfaceView.updateUndo(userData);
             }
             if (v == mButtonRedo) {
                 userData = mSpenPageDoc.redo();
                 mSpenSurfaceView.updateRedo(userData);
-            }*/
+            }
 
             if (v == mButtonDone) {
                 mSpenSurfaceView.closeControl();
@@ -845,17 +976,20 @@ public class SpenTrayBar {
 
             if (v == mButtonCancel) {
                 //showDiscardDialog();
-                 mSpenSurfaceView.closeControl();
-                 clearDataAndDismissDialog();
+                // Cancel dont show warning...
+                mSpenSurfaceView.closeControl();                
+                clearDataAndDismissDialog();
             }
-            /*if (v == mpenAndFinger) {
+
+
+            if (v == mpenAndFinger) {
                 if (isSpenAndFinger) {
                     int resid = activityRes.getIdentifier("ic_pen_only",
                             "drawable", activity.getPackageName());
                     mpenAndFinger.setImageResource(resid);
                     isSpenAndFinger = false;
                     mSpenSurfaceView.setToolTypeAction(Utils.mToolTypeFinger,
-                            SpenSimpleSurfaceView.ACTION_NONE);
+                            SpenSurfaceView.ACTION_NONE);
                 } else {
                     int resid = activityRes.getIdentifier("ic_pen_finger",
                             "drawable", activity.getPackageName());
@@ -865,27 +999,27 @@ public class SpenTrayBar {
                             mSpenSurfaceView
                                     .getToolTypeAction(Utils.mToolTypeSpen));
                 }
-            }*/
+            }
 
-            /*if (v == mButtonEdit) {
+            if (v == mButtonEdit) {
 
                 mRelativeLayout.removeView(mButtonEdit);
                 showSurfaceAndTrayBar();
                 mSpenSurfaceView.setToolTypeAction(Utils.mToolTypeSpen,
-                        SpenSimpleSurfaceView.ACTION_STROKE);
+                        SpenSurfaceView.ACTION_STROKE);
                 if (isSpenAndFinger || !mOptions.getIsFeatureEnabled()) {
                     mSpenSurfaceView.setToolTypeAction(Utils.mToolTypeFinger,
-                            SpenSimpleSurfaceView.ACTION_STROKE);
+                            SpenSurfaceView.ACTION_STROKE);
                 }
                 mRelativeLayout.setBackgroundColor(mOptions.getColor());
-            }*/
+            }
 
-            /*if (v == mButtonBg) {
+            if (v == mButtonBg) {
                 closeSettings();
                 callGalleryForInputImage(Utils.REQUEST_CODE_SELECT_IMAGE_BACKGROUND);
-            }*/
+            }
 
-            /*if (v == mButtonAddPage) {
+            if (v == mButtonAddPage) {
                 mButtonAddPage.setEnabled(false);
                 mButtonDeletePage.setEnabled(false);
                 mSpenSurfaceView.closeControl();
@@ -907,15 +1041,15 @@ public class SpenTrayBar {
                 }
                 mSpenPageDoc.setHistoryListener(mHistoryListener);
                 mSpenSurfaceView.setPageDoc(mSpenPageDoc,
-                        SpenSimpleSurfaceView.PAGE_TRANSITION_EFFECT_RIGHT,
-                        SpenSimpleSurfaceView.PAGE_TRANSITION_EFFECT_TYPE_SHADOW, 0);
+                        SpenSurfaceView.PAGE_TRANSITION_EFFECT_RIGHT,
+                        SpenSurfaceView.PAGE_TRANSITION_EFFECT_TYPE_SHADOW, 0);
                 mCurrentPageNumberTextView.setText((mSpenNoteDoc
                         .getPageIndexById(mSpenPageDoc.getId()) + 1)
                         + "/"
                         + mSpenNoteDoc.getPageCount());
-            }*/
+            }
 
-            /*if (v == mButtonDeletePage) {
+            if (v == mButtonDeletePage) {
                 mSpenSurfaceView.closeControl();
                 closeSettings();
 
@@ -931,16 +1065,16 @@ public class SpenTrayBar {
                         mSpenSurfaceView
                                 .setPageDoc(
                                         mSpenPageDoc,
-                                        SpenSimpleSurfaceView.PAGE_TRANSITION_EFFECT_LEFT,
-                                        SpenSimpleSurfaceView.PAGE_TRANSITION_EFFECT_TYPE_SHADOW,
+                                        SpenSurfaceView.PAGE_TRANSITION_EFFECT_LEFT,
+                                        SpenSurfaceView.PAGE_TRANSITION_EFFECT_TYPE_SHADOW,
                                         0);
                     } else {
                         mSpenPageDoc = mSpenNoteDoc.getPage(currentPageindex);
                         mSpenSurfaceView
                                 .setPageDoc(
                                         mSpenPageDoc,
-                                        SpenSimpleSurfaceView.PAGE_TRANSITION_EFFECT_RIGHT,
-                                        SpenSimpleSurfaceView.PAGE_TRANSITION_EFFECT_TYPE_SHADOW,
+                                        SpenSurfaceView.PAGE_TRANSITION_EFFECT_RIGHT,
+                                        SpenSurfaceView.PAGE_TRANSITION_EFFECT_TYPE_SHADOW,
                                         0);
                     }
                     ((SPenPopupSurface) mSpenSurface)
@@ -960,9 +1094,9 @@ public class SpenTrayBar {
                     }
                     mSpenPageDoc.setHistoryListener(mHistoryListener);
                 }
-            }*/
+            }
 
-            /*if (v == mButtonPageNavigateLeft) {
+            if (v == mButtonPageNavigateLeft) {
                 if (((SPenPopupSurface) mSpenSurface).getCurrentPageindex() > 0) {
                     mSpenSurfaceView.closeControl();
                     closeSettings();
@@ -974,8 +1108,8 @@ public class SpenTrayBar {
                             .setCurrentPageindex(mSpenNoteDoc
                                     .getPageIndexById(mSpenPageDoc.getId()));
                     mSpenSurfaceView.setPageDoc(mSpenPageDoc,
-                            SpenSimpleSurfaceView.PAGE_TRANSITION_EFFECT_LEFT,
-                            SpenSimpleSurfaceView.PAGE_TRANSITION_EFFECT_TYPE_SHADOW,
+                            SpenSurfaceView.PAGE_TRANSITION_EFFECT_LEFT,
+                            SpenSurfaceView.PAGE_TRANSITION_EFFECT_TYPE_SHADOW,
                             0);
                     mCurrentPageNumberTextView.setText((mSpenNoteDoc
                             .getPageIndexById(mSpenPageDoc.getId()) + 1)
@@ -990,9 +1124,9 @@ public class SpenTrayBar {
                     }
                     mSpenPageDoc.setHistoryListener(mHistoryListener);
                 }
-            }*/
+            }
 
-            /*if (v == mButtonPageNavigateRight) {
+            if (v == mButtonPageNavigateRight) {
                 if (((SPenPopupSurface) mSpenSurface).getCurrentPageindex() < (mSpenNoteDoc
                         .getPageCount() - 1)) {
                     mSpenSurfaceView.closeControl();
@@ -1005,8 +1139,8 @@ public class SpenTrayBar {
                             .setCurrentPageindex(mSpenNoteDoc
                                     .getPageIndexById(mSpenPageDoc.getId()));
                     mSpenSurfaceView.setPageDoc(mSpenPageDoc,
-                            SpenSimpleSurfaceView.PAGE_TRANSITION_EFFECT_RIGHT,
-                            SpenSimpleSurfaceView.PAGE_TRANSITION_EFFECT_TYPE_SHADOW,
+                            SpenSurfaceView.PAGE_TRANSITION_EFFECT_RIGHT,
+                            SpenSurfaceView.PAGE_TRANSITION_EFFECT_TYPE_SHADOW,
                             0);
                     mCurrentPageNumberTextView.setText((mSpenNoteDoc
                             .getPageIndexById(mSpenPageDoc.getId()) + 1)
@@ -1021,11 +1155,11 @@ public class SpenTrayBar {
                     }
                     mSpenPageDoc.setHistoryListener(mHistoryListener);
                 }
-            }*/
+            }
 
-            /*if (v == mButtonSelect) {
+            if (v == mButtonSelect) {
                 mSpenSurfaceView.closeControl();
-                if (mSpenSurfaceView.getToolTypeAction(Utils.mToolTypeSpen) == SpenSimpleSurfaceView.ACTION_SELECTION) {
+                if (mSpenSurfaceView.getToolTypeAction(Utils.mToolTypeSpen) == SpenSurfaceView.ACTION_SELECTION) {
                     // If SelectionSettingView is open, close it.
                     if (mSelectionSettingView.isShown()) {
                         mSelectionSettingView.setVisibility(View.GONE);
@@ -1037,18 +1171,18 @@ public class SpenTrayBar {
                     // If Spen is not in selection mode, change it to selection
                     // mode.
                     mSpenSurfaceView.setToolTypeAction(Utils.mToolTypeSpen,
-                            SpenSimpleSurfaceView.ACTION_SELECTION);
+                            SpenSurfaceView.ACTION_SELECTION);
                     if (isSpenAndFinger || !mOptions.getIsFeatureEnabled()) {
                         mSpenSurfaceView.setToolTypeAction(
                                 Utils.mToolTypeFinger,
-                                SpenSimpleSurfaceView.ACTION_SELECTION);
+                                SpenSurfaceView.ACTION_SELECTION);
                     }
                 }
-            }*/
+            }
         }
 
         private void writeSurfaceDataToClient() {
-            //mClipboard = null;
+            mClipboard = null;
             Activity activity = mContextParams.getSpenCustomDrawPlugin().cordova
                     .getActivity();
             Context context = activity.getApplicationContext();
@@ -1129,10 +1263,34 @@ public class SpenTrayBar {
                     }
                 }
 
-                
+                if (mOptions.getSurfaceType() == Utils.SURFACE_INLINE) {
+
+                    RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(
+                            mOptions.getSurfacePosition().getWidth(), mOptions
+                                    .getSurfacePosition().getHeight());
+                    mRelativeLayout.setBackground(null);
+                    if ((mOptions.getsPenFlags() & Utils.FLAG_EDIT) == Utils.FLAG_EDIT) {
+                        params = new RelativeLayout.LayoutParams(
+                                (int) (((float) 25) * activity.getResources()
+                                        .getDisplayMetrics().density),
+                                (int) (((float) 25) * activity.getResources()
+                                        .getDisplayMetrics().density));
+                        params.leftMargin = 5;
+                        params.topMargin = 5;
+                        mRelativeLayout.addView(mButtonEdit, params);
+                    }
+                    mSpenSurfaceView.setToolTypeAction(Utils.mToolTypeSpen,
+                            SpenSurfaceView.ACTION_NONE);
+                    if (isSpenAndFinger || !mOptions.getIsFeatureEnabled()) {
+                        mSpenSurfaceView.setToolTypeAction(
+                                Utils.mToolTypeFinger,
+                                SpenSurfaceView.ACTION_NONE);
+                    }
+                    hideSurfaceAndTrayBar();
+                }
             } else {
 
-                /*ArrayList<SpenObjectBase> selectedList = mSpenPageDoc
+                ArrayList<SpenObjectBase> selectedList = mSpenPageDoc
                         .getObjectList();
                 if (Log.isLoggable(Utils.SPEN, Log.DEBUG)) {
                     Log.d(TAG, "Done button pressed, selectedList :"
@@ -1174,18 +1332,18 @@ public class SpenTrayBar {
                             e.printStackTrace();
                         }
                     }
-                }*/
+                }
                 isDone = true;
             }
         }
 
         private void clearDataAndDismissDialog() {
-            /*if (mButtonUndo != null) {
+            if (mButtonUndo != null) {
                 mButtonUndo.setEnabled(false);
             }
             if (mButtonRedo != null) {
                 mButtonRedo.setEnabled(false);
-            }*/
+            }
             mSpenPageDoc.clearHistory();
             if (mOptions.getSurfaceType() == Utils.SURFACE_POPUP) {
                 ((SPenPopupSurface) mSpenSurface).dismissDialog();
@@ -1206,8 +1364,8 @@ public class SpenTrayBar {
                                 @Override
                                 public void onClick(DialogInterface dialog,
                                         int which) {
-                                    //userData = mSpenPageDoc.undoAll();
-                                    //mSpenSurfaceView.updateUndo(userData);
+                                    userData = mSpenPageDoc.undoAll();
+                                    mSpenSurfaceView.updateUndo(userData);
                                     writeSurfaceDataToClient();
                                     mSpenSurfaceView.closeControl();
                                     clearDataAndDismissDialog();
@@ -1235,7 +1393,7 @@ public class SpenTrayBar {
         }
     };
 
-    /*private OnScrollChangedListener onScrollListener = new OnScrollChangedListener() {
+    private OnScrollChangedListener onScrollListener = new OnScrollChangedListener() {
 
         @Override
         public void onScrollChanged() {
@@ -1257,12 +1415,12 @@ public class SpenTrayBar {
                 stopScrollDetection();
             }
         }
-    };*/
+    };
 
     /**
      * start detecting the scroll of the web view for inline surface
      */
-    /*private void startScrollDetection() {
+    private void startScrollDetection() {
         if (Log.isLoggable(Utils.SPEN, Log.DEBUG)) {
             Log.d(TAG, "inside startScrollDetection, scroll started");
         }
@@ -1283,12 +1441,12 @@ public class SpenTrayBar {
                 mOriginalPosition = (int) ((float) location[1] * metrics.density);
             }
         }
-    }*/
+    }
 
     /**
      * stops detection of the web view scroll for inilne surface
      */
-    /*private void stopScrollDetection() {
+    private void stopScrollDetection() {
         if (Log.isLoggable(Utils.SPEN, Log.DEBUG)) {
             Log.d(TAG,
                     "inside stopScrollDetection, scroll detection is stopped");
@@ -1305,7 +1463,7 @@ public class SpenTrayBar {
                         onScrollListener);
             }
         }
-    }*/
+    }
 
     /**
      *  add traybar buttons and show surface and traybar.
@@ -1329,11 +1487,6 @@ public class SpenTrayBar {
         if (mButtonCancel != null) {
             mButtonCancel.setVisibility(View.VISIBLE);
         }
-
-        if (mButtonEraser != null) {
-            mButtonEraser.setVisibility(View.VISIBLE);
-        }
-
         /*if (mpenAndFinger != null) {
             mpenAndFinger.setVisibility(View.VISIBLE);
         }
@@ -1365,13 +1518,12 @@ public class SpenTrayBar {
                 mButtonPen.setVisibility(View.VISIBLE);
             }
         }
-
+        */
         if ((mOptions.getsPenFlags() & Utils.FLAG_ERASER) == Utils.FLAG_ERASER) {
             if (mButtonEraser != null) {
                 mButtonEraser.setVisibility(View.VISIBLE);
             }
-        }*/
-
+        }
     }
 
     /**
@@ -1390,13 +1542,13 @@ public class SpenTrayBar {
 
         if (mpenAndFinger != null) {
             mpenAndFinger.setVisibility(View.GONE);
-        }
-        */
+        }*/
+
         if (mButtonEraser != null) {
             mButtonEraser.setVisibility(View.GONE);
         }
-        /*
-        if (mButtonPen != null) {
+
+        /*if (mButtonPen != null) {
             mButtonPen.setVisibility(View.GONE);
         }
 
@@ -1413,7 +1565,7 @@ public class SpenTrayBar {
         }*/
     }
 
-    /*private final HistoryListener mHistoryListener = new HistoryListener() {
+    private final HistoryListener mHistoryListener = new HistoryListener() {
         @Override
         public void onCommit(SpenPageDoc page) {
         }
@@ -1435,9 +1587,9 @@ public class SpenTrayBar {
                 mButtonRedo.setEnabled(redoable);
             }
         }
-    };*/
+    };
 
-    /*private SpenColorPickerListener mColorPickerListener = new SpenColorPickerListener() {
+    private SpenColorPickerListener mColorPickerListener = new SpenColorPickerListener() {
         @Override
         public void onChanged(int color, int x, int y) {
             if (Log.isLoggable(Utils.SPEN, Log.DEBUG)) {
@@ -1455,7 +1607,7 @@ public class SpenTrayBar {
                 }
             }
         }
-    };*/
+    };
 
     private OnTouchListener mOnTouchListener = new OnTouchListener() {
 
@@ -1466,7 +1618,7 @@ public class SpenTrayBar {
                         Color.argb(80, 0, 0, 256));
                 v.setBackground(mDrawable);
             }
-            /*if (event.getAction() == MotionEvent.ACTION_UP) {
+            if (event.getAction() == MotionEvent.ACTION_UP) {
                 if (v != mButtonClearAll && v != mButtonEdit) {
                     v.setBackground(null);
                 } else {
@@ -1479,7 +1631,7 @@ public class SpenTrayBar {
                         v.setBackgroundColor(mOptions.getColor());
                     }
                 }
-            }*/
+            }
             return false;
         }
     };
@@ -1488,24 +1640,23 @@ public class SpenTrayBar {
 
         @Override
         public boolean onTouch(View arg0, MotionEvent event) {
-            /*if (mSpenSettingPenLayout.isShown()) {
+            if (mSpenSettingPenLayout.isShown()) {
                 mSpenSettingPenLayout.setVisibility(View.GONE);
-            }*/
-
-            /*if (mSelectionSettingView.isShown()) {
-                mSelectionSettingView.setVisibility(SpenSimpleSurfaceView.GONE);
-            }*/
-            /*if (mButtonClearAll.isShown()) {
+            }
+            if (mSelectionSettingView.isShown()) {
+                mSelectionSettingView.setVisibility(SpenSurfaceView.GONE);
+            }
+            if (mButtonClearAll.isShown()) {
                 mButtonClearAll.setVisibility(View.GONE);
-            }*/
-            /*if (mBasicColorView != null && mBasicColorView.isShown()) {
+            }
+            if (mBasicColorView != null && mBasicColorView.isShown()) {
                 mBasicColorView.setVisibility(View.GONE);
             }
             if ((event.getAction() == MotionEvent.ACTION_DOWN)
                     && mPasteContextMenu != null
                     && mPasteContextMenu.isShowing()) {
                 mPasteContextMenu.hide();
-            }*/
+            }
 
             return false;
         }
@@ -1518,18 +1669,18 @@ public class SpenTrayBar {
             Log.d(TAG, "Inside closeSettings, closing settings layouts");
         }
 
-        /*if (mSpenSettingPenLayout != null) {
-            mSpenSettingPenLayout.setVisibility(SpenSimpleSurfaceView.GONE);
-        }*/
+        if (mSpenSettingPenLayout != null) {
+            mSpenSettingPenLayout.setVisibility(SpenSurfaceView.GONE);
+        }
 
-        /*if (mSelectionSettingView != null) {
-            mSelectionSettingView.setVisibility(SpenSimpleSurfaceView.GONE);
-        }*/
+        if (mSelectionSettingView != null) {
+            mSelectionSettingView.setVisibility(SpenSurfaceView.GONE);
+        }
 
         /*if (mButtonClearAll != null) {
             mButtonClearAll.setVisibility(View.GONE);
-        }*/
-        /*if (mBasicColorView != null) {
+        }
+        if (mBasicColorView != null) {
             mBasicColorView.setVisibility(View.GONE);
         }*/
     }
@@ -1551,16 +1702,17 @@ public class SpenTrayBar {
             Log.d(TAG, "Inside initializeListenersForTrayButtons, "
                     + "initializing listeners for traybar buttons");
         }
-        /*if (mButtonPen != null) {
+        if (mButtonPen != null) {
             mButtonPen.setOnClickListener(mActionButtonsOnClickListener);
             mButtonPen.setOnTouchListener(mOnTouchListener);
-        }*/
+        }
 
-        mButtonEraser.setOnClickListener(mActionButtonsOnClickListener);
-        mButtonEraser.setOnTouchListener(mOnTouchListener);
+        if (mButtonEraser != null) {
+            mButtonEraser.setOnClickListener(mActionButtonsOnClickListener);
+            mButtonEraser.setOnTouchListener(mOnTouchListener);
+        }
 
-
-        /*if (mButtonUndo != null) {
+        if (mButtonUndo != null) {
             mButtonUndo.setOnClickListener(mActionButtonsOnClickListener);
             mButtonUndo.setOnTouchListener(mOnTouchListener);
         }
@@ -1574,15 +1726,14 @@ public class SpenTrayBar {
                 && (mOptions.getsPenFlags() & Utils.FLAG_BACKGROUND) == Utils.FLAG_BACKGROUND) {
             mButtonBg.setOnClickListener(mActionButtonsOnClickListener);
             mButtonBg.setOnTouchListener(mOnTouchListener);
-        }*/
+        }
 
         mButtonDone.setOnClickListener(mActionButtonsOnClickListener);
         mButtonDone.setOnTouchListener(mOnTouchListener);
-
         mButtonCancel.setOnClickListener(mActionButtonsOnClickListener);
         mButtonCancel.setOnTouchListener(mOnTouchListener);
 
-        /*if (mpenAndFinger != null) {
+        if (mpenAndFinger != null) {
             mpenAndFinger.setOnClickListener(mActionButtonsOnClickListener);
             mpenAndFinger.setOnTouchListener(mOnTouchListener);
         }
@@ -1614,9 +1765,9 @@ public class SpenTrayBar {
                 && (mOptions.getsPenFlags() & Utils.FLAG_EDIT) == Utils.FLAG_EDIT) {
             mButtonEdit.setOnClickListener(mActionButtonsOnClickListener);
             mButtonEdit.setOnTouchListener(mOnTouchListener);
-        }*/
+        }
 
-        /*if (mButtonColor1 != null) {
+        if (mButtonColor1 != null) {
             mButtonColor1.setOnClickListener(mActionButtonsOnClickListener);
             mButtonColor1.setOnTouchListener(mOnTouchListener);
         }
@@ -1649,7 +1800,7 @@ public class SpenTrayBar {
         if (mButtonColor7 != null) {
             mButtonColor7.setOnClickListener(mActionButtonsOnClickListener);
             mButtonColor7.setOnTouchListener(mOnTouchListener);
-        }*/
+        }
     }
 
     /**
@@ -1657,7 +1808,6 @@ public class SpenTrayBar {
      * 
      * @params mSpenSettingPenLayout SpenSettingPenLayout
      */
-    /*
     public SpenSettingPenLayout getSpenSettingPenLayout() {
         if (Log.isLoggable(Utils.SPEN, Log.DEBUG)) {
             Log.d(TAG, "Inside getSpenSettingPenLayout");
@@ -1692,12 +1842,10 @@ public class SpenTrayBar {
 
         return mSpenSettingPenLayout;
     }
-    */
 
     /**
      * Set Spen Setting Layout
      */
-    /*
     private void setSpenSettingPenLayout() {
         if (Log.isLoggable(Utils.SPEN, Log.DEBUG)) {
             Log.d(TAG, "Inside setSpenSettingPenLayout");
@@ -1718,7 +1866,7 @@ public class SpenTrayBar {
         mSpenSettingPenLayout.setVisibility(View.GONE);
         mSpenSettingPenLayout.setInfo(mPenInfo);
     }
-    */
+
     /**
      * Set Surface Listeners
     */
@@ -1727,23 +1875,22 @@ public class SpenTrayBar {
             Log.d(TAG, "Inside setSurfaceListeners, setting surface listeners");
         }
         // set surface listeners
-        //mSpenSurfaceView.setColorPickerListener(mColorPickerListener);
-        //mSpenSurfaceView.setOnTouchListener(mSpenSurfaceOnTouchListener);
+        mSpenSurfaceView.setColorPickerListener(mColorPickerListener);
+        mSpenSurfaceView.setOnTouchListener(mSpenSurfaceOnTouchListener);
 
         // undo-redo history listener for page doc
-        //mSpenPageDoc.setHistoryListener(mHistoryListener);
-        //mSpenSurfaceView.setControlListener(mControlListener);
-        /*mSpenSurfaceView.setPageEffectListener(new SpenPageEffectListener() {
+        mSpenPageDoc.setHistoryListener(mHistoryListener);
+        mSpenSurfaceView.setControlListener(mControlListener);
+        mSpenSurfaceView.setPageEffectListener(new SpenPageEffectListener() {
 
             @Override
             public void onFinish() {
                 mButtonAddPage.setEnabled(true);
                 mButtonDeletePage.setEnabled(true);
             }
-        });*/
+        });
 
-        //createPasteConextMenu();
-        /*
+        createPasteConextMenu();
         mSpenSurfaceView.setLongPressListener(new SpenLongPressListener() {
 
             @Override
@@ -1772,13 +1919,12 @@ public class SpenTrayBar {
                 mSpenSurfaceView.cancelStroke();
 
             }
-        });*/
+        });
 
     }
     /**
      * Create Paste Context Menu
     */
-    /*
     private void createPasteConextMenu() {
         Context context = mContextParams.getSpenCustomDrawPlugin().cordova
                 .getActivity().getApplicationContext();
@@ -1801,7 +1947,448 @@ public class SpenTrayBar {
                     }
                 });
     }
+
+    /**
+     * Set Shape Recognition
     */
+    private void setShapeRecognition() {
+        if (Log.isLoggable(Utils.SPEN, Log.DEBUG)) {
+            Log.d(TAG,
+                    "Inside setShapeRecognition, initializing shape Recognition");
+        }
+        Context context = mContextParams.getSpenCustomDrawPlugin().cordova
+                .getActivity().getApplicationContext();
+        mSpenShapeRecognitionManager = new SpenShapeRecognitionManager(context);
+
+        List<SpenRecognitionInfo> shapeRecognitionList = mSpenShapeRecognitionManager
+                .getInfoList(SpenObjectBase.TYPE_STROKE,
+                        SpenObjectBase.TYPE_CONTAINER);
+
+        try {
+            if (shapeRecognitionList.size() > 0) {
+                for (SpenRecognitionInfo info : shapeRecognitionList) {
+                    if (info.name.equalsIgnoreCase("SpenShape")) {
+                        mShapeRecognition = mSpenShapeRecognitionManager
+                                .createRecognition(info);
+                        break;
+                    }
+                }
+            }
+
+            mShapeRecognition.setResultListener(new ResultListener() {
+                @Override
+                public void onResult(List<SpenObjectBase> input,
+                        List<SpenObjectBase> output) {
+
+                    // Remove the selected objects and append the recognized
+                    // objects to pageDoc.
+                    for (SpenObjectBase obj : input) {
+                        mSpenPageDoc.removeObject(obj);
+                    }
+
+                    if (output == null) {
+                        mIsProcessingRecognition = false;
+                        mSpenSurfaceView.closeControl();
+                        mSpenSurfaceView.update();
+                        return;
+                    }
+
+                    handleResult(output);
+                    mIsProcessingRecognition = false;
+                    mSpenSurfaceView.closeControl();
+                    mSpenSurfaceView.update();
+                }
+            });
+        } catch (ClassNotFoundException e) {
+            Log.d(TAG,
+                    "SpenShapeRecognitionManager class not found: "
+                            + e.getMessage());
+            e.printStackTrace();
+            SpenException.sendPluginResult(
+                    SpenExceptionType.FAILED_RECOGNIZE_SHAPE,
+                    mContextParams.getCallbackContext());
+        } catch (InstantiationException e) {
+            Log.d(TAG,
+                    "Failed to access the SpenShapeRecognitionManager constructor: "
+                            + e.getMessage());
+            e.printStackTrace();
+            SpenException.sendPluginResult(
+                    SpenExceptionType.FAILED_RECOGNIZE_SHAPE,
+                    mContextParams.getCallbackContext());
+        } catch (IllegalAccessException e) {
+            Log.d(TAG,
+                    "Failed to access the SpenShapeRecognitionManager field or method: "
+                            + e.getMessage());
+            e.printStackTrace();
+            SpenException.sendPluginResult(
+                    SpenExceptionType.FAILED_RECOGNIZE_SHAPE,
+                    mContextParams.getCallbackContext());
+        } catch (SpenCreationFailureException e) {
+            Log.d(TAG, "exception while creating spen: " + e.getMessage());
+            e.printStackTrace();
+            SpenException.sendPluginResult(
+                    SpenExceptionType.FAILED_RECOGNIZE_SHAPE,
+                    mContextParams.getCallbackContext());
+        } catch (IllegalStateException e) {
+            Log.d(TAG, "SpenShapeRecognition is not loaded: " + e.getMessage());
+            e.printStackTrace();
+            SpenException.sendPluginResult(
+                    SpenExceptionType.FAILED_RECOGNIZE_SHAPE,
+                    mContextParams.getCallbackContext());
+        } catch (Exception e) {
+            Log.d(TAG,
+                    "SpenShapeRecognitionManager engine not loaded: "
+                            + e.getMessage());
+            e.printStackTrace();
+            SpenException.sendPluginResult(
+                    SpenExceptionType.FAILED_RECOGNIZE_SHAPE,
+                    mContextParams.getCallbackContext());
+        }
+    }
+
+    /**
+     * Set Text Recognition
+    */
+    private void setTextRecognition() {
+        if (Log.isLoggable(Utils.SPEN, Log.DEBUG)) {
+            Log.d(TAG,
+                    "Inside setTextRecognition, intializing text recognition");
+        }
+        Context context = mContextParams.getSpenCustomDrawPlugin().cordova
+                .getActivity().getApplicationContext();
+        mSpenTextRecognitionManager = new SpenTextRecognitionManager(context);
+
+        List<SpenRecognitionInfo> textRecognitionList = mSpenTextRecognitionManager
+                .getInfoList(SpenObjectBase.TYPE_STROKE,
+                        SpenObjectBase.TYPE_CONTAINER);
+
+        try {
+            if (textRecognitionList.size() > 0) {
+                for (SpenRecognitionInfo info : textRecognitionList) {
+                    if (info.name.equalsIgnoreCase("SpenText")) {
+						if (mTextRecognition==null){
+                        mTextRecognition = mSpenTextRecognitionManager
+                                .createRecognition(info);
+						}
+                        break;
+                    }
+                }
+            }
+
+            List<String> languageList = mTextRecognition.getSupportedLanguage();
+            if (textRecognitionList.size() > 0) {
+                for (String language : languageList) {
+                    if (language.equalsIgnoreCase("eng")) {
+                        mTextRecognition.setLanguage(language);
+                        break;
+                    }
+                }
+            }
+
+            mTextRecognition.setResultListener(new ResultListener() {
+                @Override
+                public void onResult(List<SpenObjectBase> input,
+                        List<SpenObjectBase> output) {
+
+                    mIsProcessingRecognition = false;
+
+                    if (isDone) {
+                        if (mSpenNoteDoc != null) {
+                            ArrayList<SpenObjectBase> selectedList = mSpenPageDoc
+                                    .getObjectList();
+                            int j = 0;
+                            for (int i = 0; i < selectedList.size(); i++) {
+                                if (selectedList.get(i).getType() == SpenObjectBase.TYPE_TEXT_BOX) {
+                                    if (output == null) {
+                                        output = new ArrayList<SpenObjectBase>();
+                                    }
+                                    output.add(j, selectedList.get(i));
+                                    j++;
+                                }
+                            }
+                        }
+
+                        if (output == null) {
+                            return;
+                        }
+
+                        StringBuilder js_out = new StringBuilder();
+
+                        for (SpenObjectBase obj : output) {
+                            if (obj instanceof SpenObjectTextBox) {
+                                SpenObjectTextBox mSpenObjectTextBox = (SpenObjectTextBox) obj;
+                                js_out.append(" "
+                                        + mSpenObjectTextBox.getText());
+                            }
+                        }
+                        String js_out2 = js_out.toString();
+                        if (js_out2.contains("\n")) {
+                            js_out2 = js_out2.replace("\n", " ");
+                        }
+                        js_out2 = js_out2.trim();
+                        if (Log.isLoggable(Utils.SPEN, Log.DEBUG)) {
+                            Log.d(TAG, "getting text form output, text:"
+                                    + js_out);
+                        }
+
+                        PluginResult progressResult = new PluginResult(
+                                PluginResult.Status.OK, js_out2);
+                        progressResult.setKeepCallback(true);
+                        mContextParams.getCallbackContext().sendPluginResult(
+                                progressResult);
+                        if (Log.isLoggable(Utils.SPEN, Log.DEBUG)) {
+                            Log.d(TAG,
+                                    "Returned Text for return type recognitzed text is: "
+                                            + js_out2);
+                        }
+                        isDone = false;
+                    } else {
+
+                        if (output != null) {
+                            handleResult((SpenObjectTextBox) output.get(0));
+                        }
+                        mSpenSurfaceView.closeControl();
+                        mSpenSurfaceView.update();
+                    }
+                }
+            });
+        } catch (ClassNotFoundException e) {
+            Log.d(TAG,
+                    "SpenTextRecognitionManager class not found: "
+                            + e.getMessage());
+            e.printStackTrace();
+            SpenException.sendPluginResult(
+                    SpenExceptionType.FAILED_RECOGNIZE_TEXT,
+                    mContextParams.getCallbackContext());
+        } catch (InstantiationException e) {
+            Log.d(TAG,
+                    "Failed to access the SpenTextRecognitionManager constructor: "
+                            + e.getMessage());
+            e.printStackTrace();
+            SpenException.sendPluginResult(
+                    SpenExceptionType.FAILED_RECOGNIZE_TEXT,
+                    mContextParams.getCallbackContext());
+        } catch (IllegalAccessException e) {
+            Log.d(TAG,
+                    "Failed to access the SpenTextRecognitionManager field or method: "
+                            + e.getMessage());
+            e.printStackTrace();
+            SpenException.sendPluginResult(
+                    SpenExceptionType.FAILED_RECOGNIZE_TEXT,
+                    mContextParams.getCallbackContext());
+        } catch (SpenCreationFailureException e) {
+            Log.d(TAG, "exception while creating spen: " + e.getMessage());
+            e.printStackTrace();
+            SpenException.sendPluginResult(
+                    SpenExceptionType.FAILED_RECOGNIZE_TEXT,
+                    mContextParams.getCallbackContext());
+        } catch (IllegalStateException e) {
+            Log.d(TAG, "SpenTextRecognition is not loaded: " + e.getMessage());
+            e.printStackTrace();
+            SpenException.sendPluginResult(
+                    SpenExceptionType.FAILED_RECOGNIZE_TEXT,
+                    mContextParams.getCallbackContext());
+        } catch (Exception e) {
+            Log.d(TAG,
+                    "SpenTextRecognitionManager engine not loaded: "
+                            + e.getMessage());
+            e.printStackTrace();
+            SpenException.sendPluginResult(
+                    SpenExceptionType.FAILED_RECOGNIZE_TEXT,
+                    mContextParams.getCallbackContext());
+        }
+    }
+
+    /**
+     * Handle Text Recognition Result
+     * 
+     * @params text SpenObjectTextBox
+     */
+    private void handleResult(SpenObjectTextBox text) {
+
+        makeText(text, mInputList);
+        text.parseHyperText();
+        mSpenPageDoc.appendObject(text);
+        if (Log.isLoggable(Utils.SPEN, Log.DEBUG)) {
+            Log.d(TAG, "handleResult: text recognition = " + text.getText());
+        }
+
+        clear();
+        if (mSpenPageDoc.getObjectList().contains(text)) {
+            mSpenPageDoc.selectObject(text);
+        }
+        mSpenSurfaceView.update();
+    }
+
+    /**
+     * Make Text
+     * 
+     * @params text SpenObjectTextBox
+     * @params mObjectList ArrayList<SpenObjectBase>
+     */
+    private void makeText(SpenObjectTextBox text,
+            ArrayList<SpenObjectBase> mObjectList) {
+        RectF r = new RectF();
+        int minWidth, minHeight = 0;
+        float cx, cy;
+
+        if (text.hasExtraDataInt("cx of the cell")) {
+            cx = text.getExtraDataInt("cx of the cell");
+            cy = text.getExtraDataInt("cy of the cell");
+
+        } else {
+            for (SpenObjectBase obj : mObjectList) {
+                r.union(obj.getRect());
+            }
+
+            cx = (r.left + r.right) / 2;
+            cy = (r.top + r.bottom) / 2;
+        }
+
+        setTextInfo(text);
+
+        RectF bound = getTextBounds(text);
+
+        float halfWidth = bound.width() / 2;
+        float halfHeight = bound.height() / 2;
+
+        r.set(cx - halfWidth, cy - halfHeight, cx + halfWidth,
+                cy + bound.height());
+
+        text.setTextColor(mStrokeColor);
+        text.setRect(r, true);
+
+        SpenTextMeasure measure = new SpenTextMeasure();
+        measure.setObjectText(text);
+        minWidth = minHeight = measure.getMinHeight();
+        r.bottom = r.top + minHeight;
+
+        if (r.width() < minWidth) {
+            r.right = r.left + minWidth;
+        }
+
+        text.setRect(r, true);
+        text.setExtraDataInt("Type", 17);
+    }
+    
+    /**
+     * Set Text Info
+     * 
+     * @params text SpenObjectTextBox
+     */
+    private void setTextInfo(SpenObjectTextBox text) {
+
+        text.setFontSize(50);
+        text.setFont("Plain");
+        text.setRect(new RectF(0, 0, 100, 100), true);
+        text.setTextColor(mStrokeColor);
+    }
+    
+    /**
+     * Get Text Bounds
+     * 
+     * @params textBox SpenObjectTextBox
+     * @return bound RectF
+     */
+    private RectF getTextBounds(SpenObjectTextBox textBox) {
+        // This margin is needed so that the recognized text will be
+        // displayed properly in line.
+        final int MARGIN = 40;
+        RectF bound = new RectF();
+        SpenTextMeasure text = new SpenTextMeasure();
+        String str = textBox.getText();
+        int length = str.length();
+
+        float width = 0;
+        float maxWidth = 0;
+        float height = 0;
+
+        text.setObjectText(textBox);
+
+        int i;
+        for (i = 0; i < length; i++) {
+            if (str.charAt(i) == '\n') {
+                if (width > maxWidth) {
+                    maxWidth = width;
+                }
+                width = 0;
+            }
+
+            if (text.getTextRect(i) != null) {
+                width += text.getTextRect(i).width();
+            }
+        }
+
+        if (width < 66) {
+            width = 66;
+        }
+
+        if (width > maxWidth) {
+            maxWidth = width;
+        }
+
+        textBox.setRect(new RectF(0, 0, maxWidth, 100), true);
+        text.setObjectText(textBox);
+
+        height = text.getHeight();
+
+        bound.set(0, 0, maxWidth + MARGIN, height);
+        if (Log.isLoggable(Utils.SPEN, Log.DEBUG)) {
+            Log.d(TAG, "width = " + maxWidth + ", height = " + height);
+        }
+        return bound;
+    }
+
+    /**
+     * Handle Result
+     * 
+     * @params outputList List<SpenObjectBase>
+     */
+    private void handleResult(List<SpenObjectBase> outputList) {
+
+        ArrayList<SpenObjectBase> addObjectList = new ArrayList<SpenObjectBase>();
+
+        if (outputList.size() > 0) {
+            for (SpenObjectBase obj : outputList) {
+                if (obj instanceof SpenObjectContainer) {
+                    ArrayList<SpenObjectBase> itemList = ((SpenObjectContainer) obj)
+                            .getObjectList();
+
+                    if (itemList != null) {
+                        for (SpenObjectBase item : itemList) {
+                            mSpenPageDoc.appendObject(item);
+                            addObjectList.add(item);
+                        }
+                    }
+                }
+            }
+            if (Log.isLoggable(Utils.SPEN, Log.DEBUG)) {
+                Log.d(TAG,
+                        "handleResult: outputlist size = " + outputList.size());
+            }
+
+            if (mSpenPageDoc.getObjectList().containsAll(addObjectList)) {
+                mSpenPageDoc.selectObject(addObjectList);
+            }
+            mSpenSurfaceView.update();
+        }
+    }
+    
+    /**
+     * To clear SpenPage Doc and Lists
+     * 
+     */
+    private void clear() {
+        if (mSelectedList != null) {
+            for (SpenObjectBase obj : mSelectedList) {
+                mSpenPageDoc.removeObject(obj);
+            }
+            mSelectedList.clear();
+        }
+        if (mInputList != null) {
+            mInputList.clear();
+        }
+    }
 
     /**
      * Change Button on TrayBar after relaunch
@@ -1814,15 +2401,11 @@ public class SpenTrayBar {
         }
         mOptions = options;
         addOptionalButtonsToSurfaceView();
-        /*if (mButtonBg != null) {
+        if (mButtonBg != null) {
             if ((mOptions.getsPenFlags() & Utils.FLAG_BACKGROUND) != Utils.FLAG_BACKGROUND) {
                 mButtonBg.setVisibility(View.VISIBLE);
                 mButtonBg.setVisibility(View.GONE);
             }
-        }*/
-
-        if (mButtonEraser != null) {
-            mButtonEraser.setVisibility(View.VISIBLE);
         }
         if (mButtonDone != null) {
             mButtonDone.setVisibility(View.VISIBLE);
@@ -1830,11 +2413,11 @@ public class SpenTrayBar {
         if (mButtonCancel != null) {
             mButtonCancel.setVisibility(View.VISIBLE);
         }
-        /*if (mpenAndFinger != null) {
+        if (mpenAndFinger != null) {
             mpenAndFinger.setVisibility(View.VISIBLE);
-        }*/
+        }
 
-        /*if (mOptions.getSurfaceType() == Utils.SURFACE_INLINE) {
+        if (mOptions.getSurfaceType() == Utils.SURFACE_INLINE) {
             if (mButtonPen != null) {
                 if ((mOptions.getsPenFlags() & Utils.FLAG_PEN) == Utils.FLAG_PEN) {
                     mButtonPen.setVisibility(View.VISIBLE);
@@ -1868,45 +2451,45 @@ public class SpenTrayBar {
                     mButtonRedo.setVisibility(View.GONE);
                 }
             }
-        }*/
+        }
 
-        /*if (mSpenSettingPenLayout != null) {
+        if (mSpenSettingPenLayout != null) {
             if ((mBasicColorView != null)
                     && (mOptions.getsPenFlags() & Utils.FLAG_PEN_SETTINGS) == Utils.FLAG_PEN_SETTINGS) {
                 mBasicColorView.setVisibility(View.GONE);
             }
             if (mSpenSurfaceView != null) {
                 mSpenSurfaceView.setToolTypeAction(Utils.mToolTypeSpen,
-                        SpenSimpleSurfaceView.ACTION_STROKE);
+                        SpenSurfaceView.ACTION_STROKE);
                 if (isSpenAndFinger || !mOptions.getIsFeatureEnabled()) {
                     mSpenSurfaceView.setToolTypeAction(Utils.mToolTypeFinger,
-                            SpenSimpleSurfaceView.ACTION_STROKE);
+                            SpenSurfaceView.ACTION_STROKE);
                 }
             }
-        }*/
+        }
 
-        /*if ((mBasicColorView != null)) {
+        if ((mBasicColorView != null)) {
             if ((mOptions.getsPenFlags() & Utils.FLAG_PEN_SETTINGS) == Utils.FLAG_PEN_SETTINGS) {
                 mBasicColorView.setVisibility(View.GONE);
             }
             if (mSpenSurfaceView != null) {
                 mSpenSurfaceView.setToolTypeAction(Utils.mToolTypeSpen,
-                        SpenSimpleSurfaceView.ACTION_STROKE);
+                        SpenSurfaceView.ACTION_STROKE);
                 if (isSpenAndFinger || !mOptions.getIsFeatureEnabled()) {
                     mSpenSurfaceView.setToolTypeAction(Utils.mToolTypeFinger,
-                            SpenSimpleSurfaceView.ACTION_STROKE);
+                            SpenSurfaceView.ACTION_STROKE);
                 }
             }
-        }*/
+        }
 
-        /*if (mButtonSelect != null && mSelectionSettingView != null) {
+        if (mButtonSelect != null && mSelectionSettingView != null) {
             if ((mOptions.getsPenFlags() & Utils.FLAG_SELECTION) != Utils.FLAG_SELECTION) {
                 mButtonSelect.setVisibility(View.GONE);
                 mSelectionSettingView.setVisibility(View.GONE);
             }
-        }*/
+        }
 
-        /*if (mButtonDeletePage != null && mButtonPageNavigateLeft != null
+        if (mButtonDeletePage != null && mButtonPageNavigateLeft != null
                 && mButtonPageNavigateRight != null
                 && mCurrentPageNumberTextView != null && mButtonAddPage != null) {
             if ((mOptions.getsPenFlags() & Utils.FLAG_ADD_PAGE) != Utils.FLAG_ADD_PAGE) {
@@ -1916,14 +2499,23 @@ public class SpenTrayBar {
                 mCurrentPageNumberTextView.setVisibility(View.GONE);
                 mButtonAddPage.setVisibility(View.GONE);
             }
-        }*/
+        }
 
-        /*if (mOptions.getSurfaceType() == Utils.SURFACE_INLINE
+        if ((mOptions.getsPenFlags() & Utils.FLAG_TEXT_RECOGNITION) == Utils.FLAG_TEXT_RECOGNITION
+                || (mOptions.getReturnType() == Utils.RETURN_TYPE_TEXT)) {
+            setTextRecognition();
+        }
+
+        if ((mOptions.getsPenFlags() & Utils.FLAG_SHAPE_RECOGNITION) == Utils.FLAG_SHAPE_RECOGNITION) {
+            setShapeRecognition();
+        }
+
+        if (mOptions.getSurfaceType() == Utils.SURFACE_INLINE
                 && mRelativeLayout != null) {
             if (mButtonEdit != null && mButtonEdit.isShown()) {
                 mRelativeLayout.removeView(mButtonEdit);
             }
-        }*/
+        }
     }
 
     /**
@@ -1953,7 +2545,7 @@ public class SpenTrayBar {
     public void createTrayBar() {
         initTrayBarButtons();
         addButtonsToSurfaceView();
-        //createSettingsLayout();
+        createSettingsLayout();
         setSurfaceListeners();
     }
 
@@ -1970,7 +2562,6 @@ public class SpenTrayBar {
         return dstRect;
     }
 
-    /*
     private void pasteObjects() {
         mSpenNoteDoc.reviseObjectList(mClipboard);
         RectF boundRect = mClipboard.get(0).getRect();
@@ -2060,7 +2651,6 @@ public class SpenTrayBar {
         mSpenPageDoc.appendObjectList(pasteList);
         mSpenSurfaceView.update();
     }
-    */
 
     /**
      * change ContextParams

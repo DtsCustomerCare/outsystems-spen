@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="topbar_background">#FF1B8539</color>
+    <color name="top_bar">#FF1B8539</color>
 
     <color name="white">#FFFFFF</color>
     <color name="yellow">#FFFF00</color>

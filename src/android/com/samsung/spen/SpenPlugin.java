@@ -28,9 +28,6 @@ import org.json.JSONException;
 
 import com.samsung.android.sdk.SsdkUnsupportedException;
 import com.samsung.android.sdk.pen.Spen;
-import com.samsung.android.sdk.pen.document.SpenNoteDoc;
-import com.samsung.android.sdk.pen.document.SpenPageDoc;
-import com.samsung.android.sdk.pen.engine.SpenSimpleSurfaceView;
 import com.samsung.spen.SpenException.SpenExceptionType;
 
 import android.app.Activity;
@@ -73,7 +70,7 @@ public class SpenPlugin extends CordovaPlugin {
     private static final String META_DATA = "com.samsung.cordova.spen";
     private static final String TAG = "SpenPlugin";
     private Boolean pluginMetadata = null;
-    //private Boolean isStatic = null;
+    private Boolean isStatic = null;
     private Activity mActivity;
     private SpenContextParams mContextParams;
     private String mCurrentWorkingId;
@@ -105,7 +102,7 @@ public class SpenPlugin extends CordovaPlugin {
     }
 
     private void init() {
-        if (pluginMetadata == null) {
+        if (isStatic == null || pluginMetadata == null) {
             mActivity = cordova.getActivity();
             String mPackageName = mActivity.getPackageName();
             PackageManager pm = mActivity.getPackageManager();
@@ -121,7 +118,7 @@ public class SpenPlugin extends CordovaPlugin {
                 pluginMetadata = false;
             }
 
-            /*isStatic = false;
+            isStatic = false;
             int resId = mActivity.getResources().getIdentifier("spen_static",
                     "bool", mActivity.getPackageName());
             try {
@@ -133,7 +130,7 @@ public class SpenPlugin extends CordovaPlugin {
             }
             if (Log.isLoggable(Utils.SPEN, Log.DEBUG)) {
                 Log.d(TAG, "Static is " + isStatic);
-            }*/
+            }
         }
     }
 
@@ -231,14 +228,63 @@ public class SpenPlugin extends CordovaPlugin {
                 // handled this in isSpenFeatureEnabled itself as it common
                 // for many cases.
             }
+        } else if (action.equals("launchSurfaceInline")) {
+            if (Log.isLoggable(Utils.SPEN, Log.DEBUG)) {
+                Log.d(TAG, "creating the spen surface inline");
+            }
+            SpenTrayBarOptions options = createTrayBarOptions(args,
+                    Utils.SURFACE_INLINE, callbackContext);
+            final SpenTrayBarOptions inlineOptions = options;
+            if (inlineOptions != null && mSpenState != SPEN_INITILIZATION_ERROR) {
+                mActivity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        String id = inlineOptions.getId();
+                        if (mSpenSurfaceViews.getSurfaceView(id) == null) {
+                            if (surfaceCount >= SpenSurfaceViews.MAX_SURFACE_COUNT) {
+                                SpenException
+                                        .sendPluginResult(
+                                                SpenExceptionType.MAX_SURFACE_LIMIT_REACHED,
+                                                finalCallbackContext);
+                            } else {
+                                SPenSurfaceWithTrayBar mPaintViewTrayBar = null;
+                                mPaintViewTrayBar = new SPenSurfaceWithTrayBar(
+                                        mContextParams, inlineOptions);
+                                mSpenSurfaceViews.addSurfaceView(id,
+                                        mPaintViewTrayBar);
+                                surfaceCount++;
+                                if (!mSpenSurfaceViews.getSurfaceView(id)
+                                        .createSPenSurfaceWithTrayBar()) {
+                                    mSpenSurfaceViews.removeSurfaceView(id);
+                                    surfaceCount--;
+                                    SpenException
+                                            .sendPluginResult(
+                                                    SpenExceptionType.FAILED_CREATE_SURFACE,
+                                                    finalCallbackContext);
+                                } else {
+                                    // finalCallbackContext.success();
+                                    PluginResult pluginResult = new PluginResult(
+                                            PluginResult.Status.OK, "");
+                                    pluginResult.setKeepCallback(true);
+                                    finalCallbackContext
+                                            .sendPluginResult(pluginResult);
+                                }
+                            }
+                        } else {
+                            SpenException
+                                    .sendPluginResult(
+                                            SpenExceptionType.SURFACE_ID_ALREADY_EXISTS,
+                                            finalCallbackContext);
+                        }
+                    }
+                });
+            }
         } else if (action.equals("launchSurfacePopup")) {
             if (Log.isLoggable(Utils.SPEN, Log.DEBUG)) {
                 Log.d(TAG, "creating the spen surface popup");
             }
-
             SpenTrayBarOptions options = createTrayBarOptions(args,
                     Utils.SURFACE_POPUP, callbackContext);
-            
             if (options != null && mSpenState != SPEN_INITILIZATION_ERROR) {
                 String id = options.getId();
                 if (mSpenSurfaceViewsPopup.getSurfaceView(id) == null) {
@@ -273,6 +319,44 @@ public class SpenPlugin extends CordovaPlugin {
                     mSpenSurfaceViewsPopup.getSurfaceView(id)
                             .openSPenSurfaceWithTrayBar();
                 }
+            }
+        } else if (action.equals("removeSurfaceInline")) {
+            if (Log.isLoggable(Utils.SPEN, Log.DEBUG)) {
+                Log.d(TAG, "removing SpenSurface Inline");
+            }
+
+            String tempId = args.getString(ID);
+            if (tempId != null) {
+                tempId = tempId.trim();
+                if (tempId.length() > MAX_ID_LENGTH) {
+                    tempId = tempId.substring(0, MAX_ID_LENGTH);
+                }
+            }
+
+            final String id = tempId;
+            if (id == null || id.equals("") || id.equals("null")) {
+                SpenException.sendPluginResult(
+                        SpenExceptionType.INVALID_SURFACE_ID, callbackContext);
+                return false;
+            }
+
+            if (mSpenState != SPEN_INITILIZATION_ERROR) {
+                mActivity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (mSpenSurfaceViews.getSurfaceView(id) != null) {
+                            surfaceCount--;
+                            mSpenSurfaceViews.getSurfaceView(id)
+                                    .removeSurface();
+                            mSpenSurfaceViews.removeSurfaceView(id);
+                            finalCallbackContext.success(id);
+                        } else {
+                            SpenException.sendPluginResult(
+                                    SpenExceptionType.SURFACE_ID_NOT_EXISTS,
+                                    finalCallbackContext);
+                        }
+                    }
+                });
             }
         } else if (action.equals("removeSurfacePopup")) {
             if (Log.isLoggable(Utils.SPEN, Log.DEBUG)) {
@@ -569,8 +653,11 @@ public class SpenPlugin extends CordovaPlugin {
         int spenState = SPEN_INITILIZATION_ERROR;
         Spen spenPackage = new Spen();
         try {
-            spenPackage.initialize(context);
-
+            if (isStatic) {
+                spenPackage.initialize(context, 5, Spen.SPEN_STATIC_LIB_MODE);
+            } else {
+                spenPackage.initialize(context);
+            }
             if (spenPackage.isFeatureEnabled(Spen.DEVICE_PEN)) {
                 spenState = SPEN_AND_HAND_SUPPORTED;
             } else {
@@ -585,7 +672,7 @@ public class SpenPlugin extends CordovaPlugin {
             // Current, Spen SDK not handled it properly.
             SpenExceptionType errorType = null;
             boolean isExceptionTypeFound = false;
-            if (spenPackage != null) {
+            if (spenPackage != null && !isStatic) {
                 String dynamicSDKPkgName = Spen.SPEN_NATIVE_PACKAGE_NAME;
                 try {
                     PackageInfo packageInfo = mActivity.getPackageManager()

@@ -30,7 +30,7 @@ import android.widget.RelativeLayout;
 import com.samsung.android.sdk.pen.SpenSettingPenInfo;
 import com.samsung.android.sdk.pen.document.SpenNoteDoc;
 import com.samsung.android.sdk.pen.document.SpenPageDoc;
-import com.samsung.android.sdk.pen.engine.SpenSimpleSurfaceView;
+import com.samsung.android.sdk.pen.engine.SpenSurfaceView;
 import com.samsung.android.sdk.pen.settingui.SpenSettingPenLayout;
 import com.samsung.android.sdk.pen.settingui.SpenSettingSelectionLayout;
 /**
@@ -42,7 +42,7 @@ public abstract class SpenSurface {
     static final int PEN_SIZE = 10;
     protected RelativeLayout mRelativeLayout;
     protected SpenSettingPenInfo mPenInfo;
-    protected SpenSimpleSurfaceView mSpenSurfaceView;
+    protected SpenSurfaceView mSpenSurfaceView;
     protected SpenNoteDoc mSpenNoteDoc;
     protected SpenPageDoc mSpenPageDoc;
     protected SpenContextParams mContextParams;
@@ -61,7 +61,7 @@ public abstract class SpenSurface {
      * @return mSpenSurfaceView SpenSurfaceView
      * 
      */
-    protected SpenSimpleSurfaceView getSpenSurfaceView() {
+    protected SpenSurfaceView getSpenSurfaceView() {
         return mSpenSurfaceView;
     }
 

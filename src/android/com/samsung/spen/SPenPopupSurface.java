@@ -48,7 +48,7 @@ import com.samsung.android.sdk.SsdkUnsupportedException;
 import com.samsung.android.sdk.pen.Spen;
 import com.samsung.android.sdk.pen.SpenSettingPenInfo;
 import com.samsung.android.sdk.pen.document.SpenNoteDoc;
-import com.samsung.android.sdk.pen.engine.SpenSimpleSurfaceView;
+import com.samsung.android.sdk.pen.engine.SpenSurfaceView;
 import com.samsung.android.sdk.pen.settingui.SpenSettingPenLayout;
 import com.samsung.android.sdk.pen.settingui.SpenSettingSelectionLayout;
 import com.samsung.spen.SpenException.SpenExceptionType;
@@ -69,12 +69,12 @@ public class SPenPopupSurface extends SpenSurface {
 
     private static final String TAG = "SPenPopupSurface";
 
-    /*Handler handler = new Handler() {
+    Handler handler = new Handler() {
         public void handleMessage(Message msg) {
             int orientation = msg.getData().getInt("orientation");
-            handleOrientationChange(orientation);
+//            handleOrientationChange(orientation);
         }
-    };*/
+    };
 
     /**
      * Constructor for SPenPopupSurface
@@ -163,7 +163,7 @@ public class SPenPopupSurface extends SpenSurface {
                 RelativeLayout.LayoutParams.MATCH_PARENT,
                 RelativeLayout.LayoutParams.WRAP_CONTENT);
 
-        int resId = activity.getResources().getIdentifier("spentraybar_top",
+        int resId = activity.getResources().getIdentifier("spentraybar_top_simple", 
                 "layout", activity.getPackageName());
         RelativeLayout traybar_top = (RelativeLayout) View.inflate(activity,
                 resId, null);
@@ -207,7 +207,7 @@ public class SPenPopupSurface extends SpenSurface {
                 spenPackage.initialize(activity.getApplicationContext());
             }
 
-            mSpenSurfaceView = new SpenSimpleSurfaceView(
+            mSpenSurfaceView = new SpenSurfaceView(
                     activity.getApplicationContext());
             lp = new RelativeLayout.LayoutParams(point.x, point.y);
             lp.addRule(RelativeLayout.BELOW, traybar_top.getId());
@@ -221,7 +221,7 @@ public class SPenPopupSurface extends SpenSurface {
             mRelativeLayout.addView(spenSurfaceViewContainer, lp);
             int xValue = point.x;
             int yValue = point.y
-                    - (int) (((float) 36) * activity.getResources()
+                    - (int) (((float) 24) * activity.getResources()
                             .getDisplayMetrics().density);
             mSpenNoteDoc = new SpenNoteDoc(activity.getApplicationContext(),
                     xValue, yValue);
@@ -287,7 +287,7 @@ public class SPenPopupSurface extends SpenSurface {
             isSurface = false;
         }
 
-        /*mOrientationListener = new OrientationEventListener(
+        mOrientationListener = new OrientationEventListener(
                 activity.getApplicationContext()) {
             int orntation = Configuration.ORIENTATION_PORTRAIT;
 
@@ -315,8 +315,6 @@ public class SPenPopupSurface extends SpenSurface {
             }
             mOrientationListener.enable();
         }
-        */
-        
         return isSurface;
     }
 
@@ -600,7 +598,7 @@ public class SPenPopupSurface extends SpenSurface {
      * Handle Orientation
      * @params orientation
      */
-    /*void handleOrientationChange(int orientation) {
+    void handleOrientationChange(int orientation) {
         LayoutParams lp = null;
         if (mDialog != null) {
             if (mDialog.isShowing()) {
@@ -624,8 +622,7 @@ public class SPenPopupSurface extends SpenSurface {
                 mADiscardDialog.show();
             }
         }
-    }*/
-
+    }
     /**
      * remove surface and close controls
      *
