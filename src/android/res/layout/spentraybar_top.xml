@@ -50,7 +50,8 @@
                 android:src="@drawable/quick_popup_icon_cancel"
                 android:contentDescription="@string/toolbar_cancel_btn"
                 android:layout_margin="6dp" 
-                android:paddingRight="20dp" />
+                android:layout_marginRight="10dp"
+                 />
 
             <ImageButton
                  android:id="@+id/saveBtn"
