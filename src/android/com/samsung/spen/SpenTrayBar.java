@@ -1197,7 +1197,7 @@ public class SpenTrayBar {
                         try {
                             out = activity.openFileOutput(fileName,
                                     Context.MODE_PRIVATE);
-                            imgBitmap.compress(CompressFormat.PNG, 100, out);
+                            imgBitmap.compress(CompressFormat.PNG, 0, out);
                             File mFile = new File(context.getFilesDir(),
                                     fileName);
                             Uri uri = Uri.fromFile(mFile);
@@ -1206,7 +1206,7 @@ public class SpenTrayBar {
                             progressResult.setKeepCallback(true);
                             mContextParams.getCallbackContext()
                                     .sendPluginResult(progressResult);
-                        } catch (FileNotFoundException e) {
+                        } catch (FileNotFoundException e) { 
                             Log.e(TAG, "exception while compressing Image : "
                                     + e.getMessage());
                             SpenException.sendPluginResult(
@@ -1237,7 +1237,7 @@ public class SpenTrayBar {
                     ByteArrayOutputStream jpeg_data = new ByteArrayOutputStream();
                     try {
                         if (imgBitmap != null
-                                && imgBitmap.compress(CompressFormat.PNG, 100,
+                                && imgBitmap.compress(CompressFormat.PNG, 0,
                                         jpeg_data)) {
                             byte[] code = jpeg_data.toByteArray();
                             String js_out = Base64.encodeToString(code,

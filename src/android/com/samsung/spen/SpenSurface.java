@@ -16,23 +16,28 @@
 package com.samsung.spen;
 
 import java.io.IOException;
+import java.io.ByteArrayOutputStream;
 
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
+import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.provider.MediaStore;
 import android.util.Log;
 import android.widget.RelativeLayout;
+import android.provider.MediaStore.Images;
+
 import com.samsung.android.sdk.pen.SpenSettingPenInfo;
 import com.samsung.android.sdk.pen.document.SpenNoteDoc;
 import com.samsung.android.sdk.pen.document.SpenPageDoc;
 import com.samsung.android.sdk.pen.engine.SpenSurfaceView;
 import com.samsung.android.sdk.pen.settingui.SpenSettingPenLayout;
 import com.samsung.android.sdk.pen.settingui.SpenSettingSelectionLayout;
+
 /**
  * Abstract class used by SpenInline and SpenPopup Surfaces.
  *
@@ -221,10 +226,47 @@ public abstract class SpenSurface {
             }
             if (imagePath != null) {
                 try {
+                    // android.resource://
+                    /*Uri imageFileUri = Uri.parse("android.resource://" + activity.getPackageName() + "/drawable/" + imagePath);
+                    if (imageFileUri != null) {
+                        Cursor cursor = activity
+                                .getApplicationContext()
+                                .getContentResolver()
+                                .query(Uri.parse(imageFileUri.toString()), null, null,
+                                        null, null);
+                        Log.e(TAG, "imageFileUri : " + imageFileUri.toString());
+                        //String imagePath = null;
+                        if (cursor != null && cursor.moveToNext()) {
+                            try {
+                                imagePath = cursor.getString(cursor
+                                        .getColumnIndex(MediaStore.MediaColumns.DATA));
+                                Log.e(TAG, "PATH : " + imagePath);
+                                mSpenPageDoc.setBackgroundImageMode(scale);
+                                mSpenPageDoc.setBackgroundImage(imagePath);
+            
+                                mSpenPageDoc.clearHistory();
+                                mSpenSurfaceView.update();
+                            } catch (IllegalArgumentException e) {
+                                Log.e(TAG, "error while setting the background image: "
+                                        + e.getMessage());
+                                e.printStackTrace();
+                            }
+                        } else {
+                            if (Log.isLoggable(Utils.SPEN, Log.DEBUG)) {
+                                Log.e(TAG, "cursor is null or doesn't hold image");
+                            }
+                        }
+                        if (cursor != null) {
+                            cursor.close();
+                        }
+                    }*/
+
                     mSpenPageDoc.setBackgroundImageMode(scale);
                     mSpenPageDoc.setBackgroundImage(imagePath);
+
                     mSpenPageDoc.clearHistory();
                     mSpenSurfaceView.update();
+
                 } catch (IllegalArgumentException e) {
                     Log.d(TAG,
                             "error while setting the background image: "

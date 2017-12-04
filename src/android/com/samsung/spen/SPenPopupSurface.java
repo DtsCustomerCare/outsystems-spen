@@ -230,6 +230,7 @@ public class SPenPopupSurface extends SpenSurface {
             mCurrentPageindex = mSpenNoteDoc.getPageIndexById(mSpenPageDoc
                     .getId());
             mSpenPageDoc.setBackgroundColor(mOptions.getColor());
+            
             mSpenPageDoc.clearHistory();
             mSpenSurfaceView.setPageDoc(mSpenPageDoc, true);
 

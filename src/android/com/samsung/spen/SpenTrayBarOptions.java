@@ -197,13 +197,15 @@ public class SpenTrayBarOptions {
      */
     public void setColor(String color) {
 
-        try {
+        /*try {
             mColor = Color.parseColor(color);
         } catch (IllegalArgumentException e) {
             Log.d(TAG, "Error parsing the background color."
                     + " Defaulting to White color");
             mColor = 0xFFFFFFFF;
-        }
+        }*/
+
+        mColor = 0x00FFFFFF;
     }
 
     /**
