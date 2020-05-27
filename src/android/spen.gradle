@@ -5,7 +5,7 @@ repositories{
 }
 
 dependencies {
-    compile(name: 'pen-v4.1.2_full', ext: 'aar')
+    implementation fileTree(dir: 'libs', include: ['pen-v4.1.2_full.aar'])
 }
 
 android {
