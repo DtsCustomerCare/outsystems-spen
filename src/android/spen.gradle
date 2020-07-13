@@ -6,6 +6,7 @@ repositories{
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['pen-v4.1.2_full.aar'])
+    implementation files('libs/sdk-v1.0.0.jar')
 }
 
 android {
